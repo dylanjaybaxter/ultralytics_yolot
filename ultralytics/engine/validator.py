@@ -148,7 +148,8 @@ class BaseValidator:
             elif self.args.task == 'classify':
                 self.data = check_cls_dataset(self.args.data, split=self.args.split)
             else:
-                raise FileNotFoundError(emojis(f"Dataset '{self.args.data}' for task={self.args.task} not found ❌"))
+                pass
+                #raise FileNotFoundError(emojis(f"Dataset '{self.args.data}' for task={self.args.task} not found ❌"))
 
             if self.device.type == 'cpu':
                 self.args.workers = 0  # faster CPU val as time dominated by inference, not dataloading
@@ -169,15 +170,18 @@ class BaseValidator:
         self.init_metrics(de_parallel(model))
         self.jdict = []  # empty before each val
         for batch_i, batch in enumerate(bar):
+
             self.run_callbacks('on_val_batch_start')
             self.batch_i = batch_i
             # Preprocess
-            with dt[0]:
-                batch = self.preprocess(batch)
+            #with dt[0]:
+                #batch = self.preprocess(batch)
 
             # Inference
             with dt[1]:
                 preds = model(batch['img'], augment=augment)
+                if type(preds) is list:
+                    preds = torch.cat([pred[0] for pred in preds])
 
             # Loss
             with dt[2]:
@@ -194,6 +198,10 @@ class BaseValidator:
                 self.plot_predictions(batch, preds, batch_i)
 
             self.run_callbacks('on_val_batch_end')
+            # REMOVE WHEN DONE DEBUGGING
+            if batch_i > 5:
+                break
+
         stats = self.get_stats()
         self.check_stats(stats)
         self.speed = dict(zip(self.speed.keys(), (x.t / len(self.dataloader.dataset) * 1E3 for x in dt)))

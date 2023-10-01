@@ -10,7 +10,7 @@ import torch.nn as nn
 from ultralytics.nn.modules import (AIFI, C1, C2, C3, C3TR, SPP, SPPF, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x,
                                     Classify, Concat, Conv, Conv2, ConvTranspose, Detect, DWConv, DWConvTranspose2d,
                                     Focus, GhostBottleneck, GhostConv, HGBlock, HGStem, Pose, RepC3, RepConv,
-                                    RTDETRDecoder, Segment)
+                                    RTDETRDecoder, Segment, Rnn, AddRnn, RConv)
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import v8ClassificationLoss, v8DetectionLoss, v8PoseLoss, v8SegmentationLoss
@@ -73,17 +73,25 @@ class BaseModel(nn.Module):
         Returns:
             (torch.Tensor): The last output of the model.
         """
-        y, dt = [], []  # outputs
+        y, dt = [], []
+        hidden_states = [] # outputs
         for m in self.model:
             if m.f != -1:  # if not from previous layer
                 x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
             if profile:
                 self._profile_one_layer(m, x, dt)
-            x = m(x)  # run
+            if type(m) is RConv:
+                x, hidden_state = m(x)
+                hidden_states.append(hidden_state)
+            else:
+                x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
-        return x
+        if len(hidden_states) == 0:
+            return x
+        else:
+            return x, hidden_states
 
     def _predict_augment(self, x):
         """Perform augmentations on input image x and return augmented inference."""
@@ -240,7 +248,7 @@ class DetectionModel(BaseModel):
             s = 256  # 2x min stride
             m.inplace = self.inplace
             forward = lambda x: self.forward(x)[0] if isinstance(m, (Segment, Pose)) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))[0]])  # forward
             self.stride = m.stride
             m.bias_init()  # only run once
         else:
@@ -646,7 +654,7 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     return model, ckpt
 
 
-def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
+def parse_model(d, ch, verbose=True, batch=1):  # model_dict, input_channels(3)
     """Parse a YOLO model.yaml dictionary into a PyTorch model."""
     import ast
 
@@ -654,6 +662,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     max_channels = float('inf')
     nc, act, scales = (d.get(x) for x in ('nc', 'activation', 'scales'))
     depth, width, kpt_shape = (d.get(x, 1.0) for x in ('depth_multiple', 'width_multiple', 'kpt_shape'))
+    ratio = 2 # Placeholder until ratio can be identified
     if scales:
         scale = d.get('scale')
         if not scale:
@@ -707,6 +716,15 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
         elif m is RTDETRDecoder:  # special case, channels arg must be passed in index 1
             args.insert(1, [ch[x] for x in f])
+        elif m is Rnn:
+            args[0][1] = args[0][1] * width
+            args[1][1] = args[1][1] * width
+            c2 = ch[f]
+        elif m is AddRnn:
+            c2 = ch[f]
+        elif m is RConv:
+            args[0] = ch[f]
+            c2 = ch[f]
         else:
             c2 = ch[f]
 
