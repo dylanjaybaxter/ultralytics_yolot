@@ -6,9 +6,9 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 
 # YOLOT Training Script settings
 DEBUG: False
-met_save_path: "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results"
-model_save_path: "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training"
-pt_load_path: "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training\\yolot_test.pt"
+met_save_path: "/workspace/results/"
+model_save_path: "/workspace/results/"
+pt_load_path: "/workspace/results/yolot_test.pt"
 seq_len: 16
 visualize: False
 
