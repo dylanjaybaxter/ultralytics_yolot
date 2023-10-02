@@ -8,7 +8,7 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 DEBUG: False
 met_save_path: "/workspace/results/"
 model_save_path: "/workspace/results/"
-pt_load_path: "/workspace/results/yolot_test.pt"
+pt_load_path: ""
 seq_len: 16
 visualize: False
 
