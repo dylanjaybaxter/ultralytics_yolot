@@ -198,9 +198,6 @@ class BaseValidator:
                 self.plot_predictions(batch, preds, batch_i)
 
             self.run_callbacks('on_val_batch_end')
-            # REMOVE WHEN DONE DEBUGGING
-            if batch_i > 5:
-                break
 
         stats = self.get_stats()
         self.check_stats(stats)

@@ -125,24 +125,26 @@ def main_func(args):
     #trainer = DetectionTrainer(cfg= ROOT / "cfg/t_config.yaml")
     validator = DetectionValidator(dataloader=val_loader, save_dir=Path(metrics_save_path))
     model.zero_states()
-    #validator(model=model)
 
     # Test Model
     #test_input = torch.rand(6, 3, 640, 640)
     #test_output, hidden_states = model.process_sequence(test_input)
 
     # Main Training Loop
+    model.train()
     loss = 404 # Arbitrary Starting Loss for Display
     for epoch in range(epochs):
+        # Make sure model is in training mode
+        model.train()
         # Set Up Loading bar for epoch
-        bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
+        bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
         pbar_desc = f'Loss: {loss:.10e}'
         pbar = tqdm(train_loader, desc=pbar_desc, bar_format=bar_format, ascii=False)
         num_seq = len(train_loader)
         # Single Epoch Training Loop
         for seq_idx, subsequence in enumerate(pbar):
             # Evaluate Sequence
-            outputs, hidden_states = model.process_sequence(subsequence[0]['img'].to(device))
+            outputs = model(subsequence[0]['img'].to(device))
 
             # If visualize, plot outputs with imshow
             if visualize:
@@ -163,9 +165,6 @@ def main_func(args):
             pbar.set_description(f'Seq:{seq_idx}/{num_seq}, Loss:{loss:.10e}:')
             pbar.refresh()
 
-            # Exit on suspicious loss
-            if loss < 0.00000000001:
-                break
 
         # Validate
         validator(model=model)

@@ -49,12 +49,12 @@ class SequenceModel(DetectionModel):
         if not hasattr(self, 'criterion'):
             self.criterion = self.init_criterion()
         # Combine outputs into a single "batch"
-        outputs = [torch.cat([output[0] for output in outputs], dim=0),
+        outputs_cat = [torch.cat([output[0] for output in outputs], dim=0),
                    torch.cat([output[1] for output in outputs], dim=0),
                    torch.cat([output[2] for output in outputs], dim=0)]
 
-        loss, detached = self.criterion(outputs, sequence_batch)
-        return loss
+        loss, detached = self.criterion(outputs_cat, sequence_batch)
+        return loss / len(outputs)
 
     def zero_states(self):
         # For each layer
