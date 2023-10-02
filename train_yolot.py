@@ -90,6 +90,7 @@ def main_func(args):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+    print(f"Training on {device}")
 
     # Debug option
     torch.autograd.set_detect_anomaly(True)
