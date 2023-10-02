@@ -4,8 +4,8 @@
 docker build -f ./yolot_docker/Dockerfile \
      --build-arg UID_VAR=$(id -u) \
      --build-arg GID_VAR=$(id -g) \
-     -t trainingimage .
+     -t yolot_trainingimage .
 
 docker run -v bdd100k-data:/workspace/dataset \
      --gpus all \
-     --ipc=host trainingimage
+     --ipc=host yolot_trainingimage
