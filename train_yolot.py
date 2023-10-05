@@ -29,6 +29,14 @@ from tqdm import tqdm
 from ultralytics.utils.ops import non_max_suppression
 from torchvision.transforms.functional import resize
 
+# Parallelization
+from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
+
+# Profiling
+import cProfile
+import pstats
+
 
 ''' Arguments '''
 # Defaults
@@ -53,6 +61,7 @@ def init_parser():
     parser.add_argument('--vis', type=bool, default=True, help='Show training results')
     parser.add_argument('--conf', type=str, default=default_conf_path, help="Path to configuration file")
     parser.add_argument('--enConf', type=bool, default=True, help="Enable/Disable Configuration from yaml config file")
+    parser.add_argument('--prof', type=bool, default=False, help="Enable/Disable Profiling")
     return parser
 
 ''' Main Function '''
@@ -87,7 +96,7 @@ def main_func(args):
 
     # Setup Device
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cuda:0")
     else:
         device = torch.device("cpu")
     print(f"Training on {device}")
@@ -96,19 +105,22 @@ def main_func(args):
     torch.autograd.set_detect_anomaly(True)
     scaler = amp.GradScaler(enabled=True)
 
+    # Initialize Parallelization
+    #init_distributed()
+
     # Setup Dataloader
     print("Building Dataset")
     # Create Datasets for Training and Validation
     training_dataset = BMOTSDataset(dataset_path, "train", device=device, seq_len=sequence_len)
     val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len)
     # Use Datasets to Create Autoloader
-    train_loader = DataLoader(training_dataset, batch_size=1, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=True, collate_fn=single_batch_collate)
+    train_loader = DataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=True, collate_fn=single_batch_collate)
 
     # Create Model
     #model = DetectionModel(cfg="yolov8Tn.yaml")
     model = SequenceModel(cfg=model, device=device)
-    optimizer = opt.SGD(model.parameters(), lr=0.001)
+    optimizer = opt.SGD(model.parameters(), lr=0.000001)
     model.train()
     model.model_to(device)
     model.hidden_states_to(device)
@@ -216,11 +228,33 @@ def display_predictions(batch, preds, num_frames):
 
     return 0
 
-
+def init_distributed():
+    # Initializes the distributed backend which will take care of synchronizing nodes/GPUs
+    dist_url = "env://" # default
+    # only works with torch.distributed.launch // torch.run
+    rank = int(os.environ["RANK"])
+    world_size = int(os.environ['WORLD_SIZE'])
+    local_rank = int(os.environ['LOCAL_RANK'])
+    dist.init_process_group(
+            backend="nccl",
+            init_method=dist_url,
+            world_size=world_size,
+            rank=rank)
+    # this will make all .cuda() calls work properly
+    torch.cuda.set_device(local_rank)
+    # synchronizes all the threads to reach this point before moving on
+    dist.barrier()
 
 ''' Main Script'''
 if __name__ == '__main__':
     args = init_parser().parse_args()
     print(args)
-    main_func(args)
+    #
+    if args.prof:
+        cProfile.run('main_func(args)', 'outputs.prof')
+        p = pstats.Stats('outputs.prof')
+        p.sort_stats('cumulative').print_stats(20)
+    else:
+        main_func(args)
+    print("Done!")
 
