@@ -8,6 +8,7 @@ import torch
 from torch.cuda import amp
 import os
 import yaml
+import multiprocessing
 
 ''' Imports '''
 # Standard Library
@@ -247,6 +248,9 @@ def init_distributed():
 
 ''' Main Script'''
 if __name__ == '__main__':
+    # Setup parallel stuff
+    multiprocessing.set_start_method('spawn')
+
     args = init_parser().parse_args()
     print(args)
     #
