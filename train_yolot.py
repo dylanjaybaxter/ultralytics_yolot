@@ -29,6 +29,7 @@ import torch.optim as opt
 from tqdm import tqdm
 from ultralytics.utils.ops import non_max_suppression
 from torchvision.transforms.functional import resize
+from torch.cuda.amp import autocast, GradScaler
 
 # Parallelization
 from torch.utils.data.distributed import DistributedSampler
@@ -92,6 +93,7 @@ def main_func(args):
         cls_gain = conf['cls']
         box_gain = conf['box']
         dfl_gain = conf['dfl']
+        lr0 = conf['lr0']
         DEBUG = conf['DEBUG']
 
 
@@ -103,8 +105,8 @@ def main_func(args):
     print(f"Training on {device}")
 
     # Debug option
-    torch.autograd.set_detect_anomaly(True)
-    scaler = amp.GradScaler(enabled=True)
+    #torch.autograd.set_detect_anomaly(True)
+    scaler = GradScaler(enabled=True)
 
     # Initialize Parallelization
     #init_distributed()
@@ -121,12 +123,12 @@ def main_func(args):
     # Create Model
     #model = DetectionModel(cfg="yolov8Tn.yaml")
     model = SequenceModel(cfg=model, device=device)
-    optimizer = opt.SGD(model.parameters(), lr=0.000001)
     model.train()
     model.model_to(device)
     model.hidden_states_to(device)
     if model_load_path:
         model.load_state_dict(torch.load(model_load_path), strict=False)
+    optimizer = opt.SGD(model.parameters(), lr=lr0)
 
     # Attributes bandaid
     class Args(object):
@@ -146,7 +148,7 @@ def main_func(args):
 
     # Main Training Loop
     model.train()
-    loss = 404 # Arbitrary Starting Loss for Display
+    loss = 0 # Arbitrary Starting Loss for Display
     for epoch in range(epochs):
         # Make sure model is in training mode
         model.train()
@@ -157,23 +159,27 @@ def main_func(args):
         num_seq = len(train_loader)
         # Single Epoch Training Loop
         for seq_idx, subsequence in enumerate(pbar):
+            # Forward Pass
+            #with autocast():
             # Evaluate Sequence
             outputs = model(subsequence[0]['img'].to(device))
+            # Compute Loss
+            loss = model.sequence_loss(outputs, subsequence[0])
 
             # If visualize, plot outputs with imshow
             if visualize:
                 display_predictions(subsequence[0], outputs, 16)
 
-            # Compute Loss
-            loss = model.sequence_loss(outputs, subsequence[0])
-            # Zero Out Leftover Gradients
-            optimizer.zero_grad()
             # Compute New Gradients
+            #scaler.scale(loss).backward()
             loss.backward()
-            # Backpropagate
+            # Update weights
+            #scaler.step(optimizer)
             optimizer.step()
             # Reset and detach hidden states
             model.zero_states()
+            # Zero Out Leftover Gradients
+            optimizer.zero_grad()
 
             # Update Progress Bar
             pbar.set_description(f'Seq:{seq_idx}/{num_seq}, Loss:{loss:.10e}:')
