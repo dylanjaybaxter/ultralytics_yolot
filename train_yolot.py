@@ -137,8 +137,8 @@ def main_func(args):
                                        drop_last=False)
     # Use Datasets to Create Autoloader
     train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                              collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler, persistent_workers=True)
-    val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False, persistent_workers=True,
+                              collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
+    val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
 
     # Wrap Model for parallel processing
