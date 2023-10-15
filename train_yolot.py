@@ -32,13 +32,15 @@ from torchvision.transforms.functional import resize
 from torch.cuda.amp import autocast, GradScaler
 
 # Parallelization
-from torch.utils.data.distributed import DistributedSampler
 import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.multiprocessing as mp
+from ultralytics.data.build import InfiniteDataLoader
 
 # Profiling
 import cProfile
 import pstats
-
 
 ''' Arguments '''
 # Defaults
@@ -51,7 +53,10 @@ default_model_save_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_trai
 default_model_load_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training\\yolot_test.pt"
 default_conf_path = "yolot_config.yaml"
 
-''' Function to add arguments'''
+local_rank = int(os.environ["LOCAL_RANK"])
+global_rank = int(os.environ["RANK"])
+
+'''Function to add arguments'''
 def init_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default=default_model_path, help='Path to model to be trained')
@@ -76,6 +81,7 @@ def main_func(args):
     metrics_save_path = args.sMetrics
     model_load_path = args.lModel
     visualize = args.vis
+
     # Overwrite any local changes with the config file
     config_path = args.conf
     if config_path:
@@ -95,39 +101,54 @@ def main_func(args):
         dfl_gain = conf['dfl']
         lr0 = conf['lr0']
         DEBUG = conf['DEBUG']
+        prof = conf['prof']
 
+    # Initialize Parallelization
+    # init_distributed(RANK=, WORLD_SIZE=WORLD_SIZE)
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    dist.init_process_group("nccl")
+    torch.multiprocessing.set_start_method('spawn')
 
     # Setup Device
+    print(f"Training on GR: {global_rank}, LR: {local_rank}...checking in...")
     if torch.cuda.is_available():
-        device = torch.device("cuda:0")
+        device = 'cuda:' + str(local_rank)
     else:
-        device = torch.device("cpu")
-    print(f"Training on {device}")
+        device = torch.device('cpu')
+    torch.cuda.set_device(device)
+    torch.cuda.empty_cache()
+
+
 
     # Debug option
     #torch.autograd.set_detect_anomaly(True)
     scaler = GradScaler(enabled=True)
 
-    # Initialize Parallelization
-    #init_distributed()
-
     # Setup Dataloader
-    print("Building Dataset")
+    if global_rank == 0:
+        print("Building Dataset")
     # Create Datasets for Training and Validation
     training_dataset = BMOTSDataset(dataset_path, "train", device=device, seq_len=sequence_len)
     val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len)
+    # Create Samplers for distributed processing
+    train_sampler = DistributedSampler(training_dataset, shuffle=False,
+                                       drop_last=False)
+    val_sampler = DistributedSampler(val_dataset, shuffle=False,
+                                       drop_last=False)
     # Use Datasets to Create Autoloader
-    train_loader = DataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=True, collate_fn=single_batch_collate)
+    train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
+                              collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
+    val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
+                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
 
-    # Create Model
-    #model = DetectionModel(cfg="yolov8Tn.yaml")
-    model = SequenceModel(cfg=model, device=device)
+    # Wrap Model for parallel processing
+    model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
-    model.hidden_states_to(device)
     if model_load_path:
         model.load_state_dict(torch.load(model_load_path), strict=False)
+    print(f"Building parallel model with device: {torch.device(device)}")
+    model = DDP(model, device_ids=[local_rank])
     optimizer = opt.SGD(model.parameters(), lr=lr0)
 
     # Attributes bandaid
@@ -138,20 +159,18 @@ def main_func(args):
     model.args.box = box_gain
     model.args.dfl = dfl_gain
 
-    #trainer = DetectionTrainer(cfg= ROOT / "cfg/t_config.yaml")
+    # Create Validator and make sure that model states are zeroed
     validator = DetectionValidator(dataloader=val_loader, save_dir=Path(metrics_save_path))
-    model.zero_states()
-
-    # Test Model
-    #test_input = torch.rand(6, 3, 640, 640)
-    #test_output, hidden_states = model.process_sequence(test_input)
+    model.module.zero_states()
 
     # Main Training Loop
     model.train()
     loss = 0 # Arbitrary Starting Loss for Display
+    dist.barrier()
     for epoch in range(epochs):
         # Make sure model is in training mode
         model.train()
+        train_loader.sampler.set_epoch(epoch)
         # Set Up Loading bar for epoch
         bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
         pbar_desc = f'Loss: {loss:.10e}'
@@ -164,7 +183,7 @@ def main_func(args):
             # Evaluate Sequence
             outputs = model(subsequence[0]['img'].to(device))
             # Compute Loss
-            loss = model.sequence_loss(outputs, subsequence[0])
+            loss = model.module.sequence_loss(outputs, subsequence[0])
 
             # If visualize, plot outputs with imshow
             if visualize:
@@ -177,20 +196,22 @@ def main_func(args):
             #scaler.step(optimizer)
             optimizer.step()
             # Reset and detach hidden states
-            model.zero_states()
+            model.module.zero_states()
             # Zero Out Leftover Gradients
             optimizer.zero_grad()
 
             # Update Progress Bar
-            pbar.set_description(f'Seq:{seq_idx}/{num_seq}, Loss:{loss:.10e}:')
-            pbar.refresh()
-
+            if global_rank == 0:
+                pbar.set_description(f'Seq:{seq_idx}/{num_seq}, Loss:{loss:.10e}:')
+                pbar.refresh()
 
         # Validate
-        validator(model=model)
+        if global_rank == 0:
+            validator(model=model)
 
         # Save Model
-        torch.save(model.state_dict(), os.path.join(model_save_path, "yolot_test.pt"))
+        if global_rank == 0:
+            torch.save(model.state_dict(), os.path.join(model_save_path, "yolot_test.pt"))
 
     # Evalutation
     print("Training Complete:)")
@@ -235,36 +256,28 @@ def display_predictions(batch, preds, num_frames):
 
     return 0
 
-def init_distributed():
-    # Initializes the distributed backend which will take care of synchronizing nodes/GPUs
-    dist_url = "env://" # default
-    # only works with torch.distributed.launch // torch.run
-    rank = int(os.environ["RANK"])
-    world_size = int(os.environ['WORLD_SIZE'])
-    local_rank = int(os.environ['LOCAL_RANK'])
-    dist.init_process_group(
-            backend="nccl",
-            init_method=dist_url,
-            world_size=world_size,
-            rank=rank)
-    # this will make all .cuda() calls work properly
-    torch.cuda.set_device(local_rank)
-    # synchronizes all the threads to reach this point before moving on
-    dist.barrier()
+def init_distributed(RANK, WORLD_SIZE):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    dist.init_process_group("nccl", rank=RANK, world_size=WORLD_SIZE)
 
 ''' Main Script'''
 if __name__ == '__main__':
-    # Setup parallel stuff
-    multiprocessing.set_start_method('spawn')
-
     args = init_parser().parse_args()
     print(args)
-    #
-    if args.prof:
-        cProfile.run('main_func(args)', 'outputs.prof')
-        p = pstats.Stats('outputs.prof')
-        p.sort_stats('cumulative').print_stats(20)
-    else:
-        main_func(args)
+    main_func(args)
+    '''
+    # Setup parallel stuff
+    mp.set_start_method('spawn')
+    world_size = 3
+    print(f"Starting training with {world_size} workers")
+    mp.spawn(
+        main_func,
+        args=(world_size, args),
+        nprocs=world_size
+    )
+    dist.destroy_process_group()
+    '''
+
     print("Done!")
 

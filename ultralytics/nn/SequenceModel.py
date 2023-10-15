@@ -15,14 +15,15 @@ class SequenceModel(DetectionModel):
     '''
     This object provides a version of YOLOv8 which gives access to Rconv hidden states and processes entire sequences
     '''
-    def __init__(self, cfg="yolov8nT.yaml", device='cpu'):
+    def __init__(self, cfg="yolov8nT.yaml", device='cpu', verbose=False):
         self.args = Args()
         self.args.cls = 0.5
         self.args.box = 7.5
         self.args.dfl = 1.5
         self.device = 'cpu'
-        super().__init__(cfg)
+        super().__init__(cfg, verbose=verbose)
         self.device = device
+        self.init_criterion()
 
     def forward(self, x):
         predictions, _ = self.process_sequence(x)

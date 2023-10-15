@@ -123,7 +123,7 @@ class BMOTSDataset(Dataset):
                 # Store original size
                 ori_sizes.append(tuple(im.shape[1:]))
                 # Resize
-                im = self.resz(im, antialias=True)
+                im = self.resz(im)
                 # Store new size
                 resized_shapes.append(tuple(im.shape[1:]))
                 ratio_pads.append((resized_shapes[-1][0] / ori_sizes[-1][0],

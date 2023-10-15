@@ -16,4 +16,4 @@ WORKDIR /workspace
 COPY . /workspace
 
 # When started run the training
-CMD python3 train_yolot.py --conf yolot_config_unix.yaml
+CMD python3 -m torch.distributed.run --nnodes=1 --nproc_per_node=1 train_yolot.py --conf yolot_config_unix.yaml
