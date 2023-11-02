@@ -296,7 +296,6 @@ def init_distributed():
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     os.environ['OMP_NUM_THREADS'] = "2"
     dist.init_process_group(backend="nccl")
-    dist.barrier()
 
 def print_cuda_info():
     print(torch.__version__)
