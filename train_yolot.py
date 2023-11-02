@@ -228,7 +228,7 @@ def main_func(args):
             # Update Progress Bar
             if global_rank == 0:
                 pbar.set_description(f"Seq:{seq_idx+1}/{num_seq}, Loss:{loss:.10e}, lr: {optimizer.param_groups[0]['lr']:.5e}:")
-                tb_writer.add_scalar('Loss', loss, epoch*len(train_loader)+seq_idx)
+                tb_writer.add_scalar('Loss', loss, (epoch-1)*len(train_loader)+seq_idx)
                 pbar.refresh()
 
         # Validate
