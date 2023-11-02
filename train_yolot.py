@@ -165,6 +165,7 @@ def main_func(args):
     # if model_load_path:
     #     model.load_state_dict(torch.load(model_load_path), strict=False)
     print(f"Building parallel model with device: {torch.device(device)}")
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = DDP(model, device_ids=[local_rank])
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
     print("model built")
