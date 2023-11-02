@@ -115,7 +115,7 @@ def main_func(args):
 
     # Initialize Parallelization
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    dist.init_process_group(backend="gloo|nccl")
+    dist.init_process_group(backend="nccl")
     #torch.multiprocessing.set_start_method('spawn')
 
     if global_rank == 0:
