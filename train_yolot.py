@@ -116,6 +116,7 @@ def main_func(args):
     # Initialize Parallelization
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     dist.init_process_group(backend="nccl")
+    dist.barrier()
     #torch.multiprocessing.set_start_method('spawn')
 
     if global_rank == 0:
@@ -161,14 +162,17 @@ def main_func(args):
     # Wrap Model for parallel processing
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
+    model.model_to(device)
     # if model_load_path:
     #     model.load_state_dict(torch.load(model_load_path), strict=False)
     print(f"Building parallel model with device: {torch.device(device)}")
     #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    dist.barrier()
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
-    optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
+    dist.barrier()
     print("model built")
-    model.model_to(device)
+    optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
+
 
     # Define Scheduler
     lam1 = lambda epoch: (0.9 ** epoch)
