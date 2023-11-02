@@ -167,6 +167,7 @@ def main_func(args):
     print(f"Building parallel model with device: {torch.device(device)}")
     model = DDP(model, device_ids=[local_rank])
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
+    print("model built")
 
     # Define Scheduler
     lam1 = lambda epoch: (0.9 ** epoch)
