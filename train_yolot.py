@@ -161,7 +161,6 @@ def main_func(args):
     # Wrap Model for parallel processing
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
-    model.model_to(device)
     # if model_load_path:
     #     model.load_state_dict(torch.load(model_load_path), strict=False)
     print(f"Building parallel model with device: {torch.device(device)}")
@@ -169,6 +168,7 @@ def main_func(args):
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
     print("model built")
+    model.model_to(device)
 
     # Define Scheduler
     lam1 = lambda epoch: (0.9 ** epoch)
