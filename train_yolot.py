@@ -3,6 +3,8 @@ This is a script intended for training YOLOT: A modified recurrent variant of YO
 Author: Dylan Baxter
 Created: 8/7/23
 '''
+import datetime
+
 import cv2
 import torch
 from torch.cuda import amp
@@ -22,7 +24,7 @@ from torch.utils.data import DataLoader
 from ultralytics.nn.tasks import DetectionModel
 from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.models.yolo.detect.train import DetectionTrainer
-from ultralytics.models.yolo.detect.val import DetectionValidator
+from ultralytics.models.yolo.detect.val import SequenceValidator
 from ultralytics.cfg import ROOT
 from ultralytics.nn.SequenceModel import SequenceModel
 import torch.optim as opt
@@ -37,6 +39,11 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 from ultralytics.data.build import InfiniteDataLoader
+from torch.optim.lr_scheduler import LambdaLR
+
+# Logging
+from tensorboard import program
+from torch.utils.tensorboard import SummaryWriter
 
 # Profiling
 import cProfile
@@ -73,6 +80,7 @@ def init_parser():
 
 ''' Main Function '''
 def main_func(args):
+    print ("Hello Training Weee2")
     # Setup Arguments
     model = args.model
     epochs = args.epochs
@@ -102,14 +110,24 @@ def main_func(args):
         lr0 = conf['lr0']
         DEBUG = conf['DEBUG']
         prof = conf['prof']
+        log_dir = conf['log_dir']
 
     # Initialize Parallelization
     # init_distributed(RANK=, WORLD_SIZE=WORLD_SIZE)
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    dist.init_process_group("nccl")
+    dist.init_process_group(backend='nccl', init_method='env://', timeout=datetime.timedelta(seconds=5400))
     torch.multiprocessing.set_start_method('spawn')
 
+    if global_rank == 0:
+        # Initialize Tensorboard
+        tb = program.TensorBoard()
+        tb.configure(argv=[None, '--logdir', log_dir, '--bind_all'])
+        url = tb.launch()
+        print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
+        tb_writer = SummaryWriter(log_dir=log_dir)
+
     # Setup Device
+    print_cuda_info()
     print(f"Training on GR: {global_rank}, LR: {local_rank}...checking in...")
     if torch.cuda.is_available():
         device = 'cuda:' + str(local_rank)
@@ -118,10 +136,8 @@ def main_func(args):
     torch.cuda.set_device(device)
     torch.cuda.empty_cache()
 
-
-
     # Debug option
-    #torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(True)
     scaler = GradScaler(enabled=True)
 
     # Setup Dataloader
@@ -139,17 +155,22 @@ def main_func(args):
     train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
                               collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
+                            collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=val_sampler)
 
     # Wrap Model for parallel processing
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
-    if model_load_path:
-        model.load_state_dict(torch.load(model_load_path), strict=False)
+    # if model_load_path:
+    #     model.load_state_dict(torch.load(model_load_path), strict=False)
     print(f"Building parallel model with device: {torch.device(device)}")
     model = DDP(model, device_ids=[local_rank])
-    optimizer = opt.SGD(model.parameters(), lr=lr0)
+    optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
+
+    # Define Scheduler
+    lam1 = lambda epoch: (0.9 ** epoch)
+    scheduler = LambdaLR(optimizer, lr_lambda=[lam1])
+    print(f"Number of param groups: {len(optimizer.param_groups)}")
 
     # Attributes bandaid
     class Args(object):
@@ -160,59 +181,70 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    validator = DetectionValidator(dataloader=val_loader, save_dir=Path(metrics_save_path))
+    validator = SequenceValidator(dataloader=val_loader, device=device)
     model.module.zero_states()
 
     # Main Training Loop
     model.train()
     loss = 0 # Arbitrary Starting Loss for Display
-    dist.barrier()
-    for epoch in range(epochs):
+
+    for epoch in range(1,epochs+1):
+        # Sync at the beginning of each epoch
+        dist.barrier()
         # Make sure model is in training mode
         model.train()
+        model.module.model_to(device)
         train_loader.sampler.set_epoch(epoch)
+        validator.dataloader.sampler.set_epoch(epoch)
+
         # Set Up Loading bar for epoch
         bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
-        pbar_desc = f'Loss: {loss:.10e}'
+        pbar_desc = f"Loss: {loss:.10e}, lr: {optimizer.param_groups[0]['lr']:.5e}"
         pbar = tqdm(train_loader, desc=pbar_desc, bar_format=bar_format, ascii=False)
         num_seq = len(train_loader)
+
         # Single Epoch Training Loop
         for seq_idx, subsequence in enumerate(pbar):
+            # Reset and detach hidden states
+            model.module.zero_states()
+            # Zero Out Leftover Gradients
+            optimizer.zero_grad()
             # Forward Pass
-            #with autocast():
-            # Evaluate Sequence
-            outputs = model(subsequence[0]['img'].to(device))
-            # Compute Loss
-            loss = model.module.sequence_loss(outputs, subsequence[0])
+            with autocast(enabled=True):
+                outputs = model(subsequence[0]['img'].to(device))
+                # Compute Loss
+                loss = model.module.sequence_loss(outputs, subsequence[0])
 
             # If visualize, plot outputs with imshow
             if visualize:
                 display_predictions(subsequence[0], outputs, 16)
 
             # Compute New Gradients
-            #scaler.scale(loss).backward()
-            loss.backward()
+            scaler.scale(loss*.001).backward()
             # Update weights
-            #scaler.step(optimizer)
-            optimizer.step()
-            # Reset and detach hidden states
-            model.module.zero_states()
-            # Zero Out Leftover Gradients
-            optimizer.zero_grad()
+            scaler.step(optimizer)
+            scaler.update()
 
             # Update Progress Bar
             if global_rank == 0:
-                pbar.set_description(f'Seq:{seq_idx}/{num_seq}, Loss:{loss:.10e}:')
+                pbar.set_description(f"Seq:{seq_idx+1}/{num_seq}, Loss:{loss:.10e}, lr: {optimizer.param_groups[0]['lr']:.5e}:")
+                tb_writer.add_scalar('Loss', loss, epoch*len(train_loader)+seq_idx)
                 pbar.refresh()
 
         # Validate
+        model.eval()
+        metrics = validator.validate(model)
         if global_rank == 0:
-            validator(model=model)
+            tb_writer.add_scalar('mAP',metrics['map'], epoch)
+            tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
 
-        # Save Model
-        if global_rank == 0:
-            torch.save(model.state_dict(), os.path.join(model_save_path, "yolot_test.pt"))
+        # Detach tensors
+        #for param in model.module.parameters():
+            #param.detach()
+        scheduler.step()
 
+    # Cleanup
+    tb_writer.close()
     # Evalutation
     print("Training Complete:)")
 
@@ -260,6 +292,15 @@ def init_distributed(RANK, WORLD_SIZE):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group("nccl", rank=RANK, world_size=WORLD_SIZE)
+
+def print_cuda_info():
+    print(torch.__version__)
+    print(torch.cuda.nccl.is_available(torch.randn(1).cuda()))
+    print(torch.cuda.nccl.version())
+
+def start_tb(log_dir, port=6006):
+    tensorboard_cmd = f"tensorboard --logdir={log_dir} --port={port}"
+    subprocess.Popen(tensorboard_cmd, shell=True)
 
 ''' Main Script'''
 if __name__ == '__main__':

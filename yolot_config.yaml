@@ -11,6 +11,7 @@ model_save_path: "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training"
 pt_load_path: "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training\\yolot_test.pt"
 seq_len: 16
 visualize: False
+log_dir: ""
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: "yolov8Tn.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
