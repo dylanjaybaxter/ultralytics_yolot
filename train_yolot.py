@@ -120,11 +120,12 @@ def main_func(args):
 
     if global_rank == 0:
         # Initialize Tensorboard
+        dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tb = program.TensorBoard()
-        tb.configure(argv=[None, '--logdir', log_dir, '--bind_all'])
+        tb.configure(argv=[None, '--logdir', os.path.join(log_dir, dt), '--bind_all'])
         url = tb.launch()
-        print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
-        tb_writer = SummaryWriter(log_dir=log_dir)
+        print(f"Tensorboard started listening to {os.path.join(log_dir, dt)} and broadcasting on {url}")
+        tb_writer = SummaryWriter(log_dir=os.path.join(log_dir, dt))
 
     # Setup Device
     print_cuda_info()
@@ -298,9 +299,6 @@ def print_cuda_info():
     print(torch.cuda.nccl.is_available(torch.randn(1).cuda()))
     print(torch.cuda.nccl.version())
 
-def start_tb(log_dir, port=6006):
-    tensorboard_cmd = f"tensorboard --logdir={log_dir} --port={port}"
-    subprocess.Popen(tensorboard_cmd, shell=True)
 
 ''' Main Script'''
 if __name__ == '__main__':
