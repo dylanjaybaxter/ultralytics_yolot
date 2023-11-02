@@ -113,11 +113,6 @@ def main_func(args):
         prof = conf['prof']
         log_dir = conf['log_dir']
 
-    # Initialize Parallelization
-    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    dist.init_process_group(backend="nccl")
-    dist.barrier()
-    #torch.multiprocessing.set_start_method('spawn')
 
     if global_rank == 0:
         # Initialize Tensorboard
@@ -296,10 +291,11 @@ def display_predictions(batch, preds, num_frames):
 
     return 0
 
-def init_distributed(RANK, WORLD_SIZE):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group("nccl", rank=RANK, world_size=WORLD_SIZE)
+def init_distributed():
+    # Initialize Parallelization
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    dist.init_process_group(backend="nccl")
+    dist.barrier()
 
 def print_cuda_info():
     print(torch.__version__)
@@ -309,6 +305,7 @@ def print_cuda_info():
 
 ''' Main Script'''
 if __name__ == '__main__':
+    init_distributed()
     args = init_parser().parse_args()
     print(args)
     main_func(args)
