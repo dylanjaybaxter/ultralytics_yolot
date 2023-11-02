@@ -294,6 +294,7 @@ def display_predictions(batch, preds, num_frames):
 def init_distributed():
     # Initialize Parallelization
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    os.environ['OMP_NUM_THREADS'] = "2"
     dist.init_process_group(backend="nccl")
     dist.barrier()
 
