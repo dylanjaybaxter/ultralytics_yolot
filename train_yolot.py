@@ -62,6 +62,7 @@ default_conf_path = "yolot_config.yaml"
 
 local_rank = int(os.environ["LOCAL_RANK"])
 global_rank = int(os.environ["RANK"])
+world_size = int(os.environ['WORLD_SIZE'])
 
 '''Function to add arguments'''
 def init_parser():
@@ -113,10 +114,9 @@ def main_func(args):
         log_dir = conf['log_dir']
 
     # Initialize Parallelization
-    # init_distributed(RANK=, WORLD_SIZE=WORLD_SIZE)
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    dist.init_process_group(backend='nccl', init_method='env://', timeout=datetime.timedelta(seconds=5400))
-    torch.multiprocessing.set_start_method('spawn')
+    dist.init_process_group(backend="gloo|nccl")
+    #torch.multiprocessing.set_start_method('spawn')
 
     if global_rank == 0:
         # Initialize Tensorboard
@@ -129,7 +129,7 @@ def main_func(args):
 
     # Setup Device
     print_cuda_info()
-    print(f"Training on GR: {global_rank}, LR: {local_rank}...checking in...")
+    print(f"Training on GR: {global_rank}/{world_size}, LR: {local_rank}...checking in...")
     if torch.cuda.is_available():
         device = 'cuda:' + str(local_rank)
     else:
@@ -165,8 +165,8 @@ def main_func(args):
     # if model_load_path:
     #     model.load_state_dict(torch.load(model_load_path), strict=False)
     print(f"Building parallel model with device: {torch.device(device)}")
-    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    model = DDP(model, device_ids=[local_rank])
+    #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
     print("model built")
 
@@ -248,6 +248,7 @@ def main_func(args):
 
     # Cleanup
     tb_writer.close()
+    dist.destroy_process_group()
     # Evalutation
     print("Training Complete:)")
 
