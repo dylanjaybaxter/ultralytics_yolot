@@ -158,6 +158,7 @@ def main_func(args):
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
+    ckpt = None
     if os.path.exists(model_load_path):
         print(f"Loading model from {model_load_path}")
         ckpt = torch.load(model_load_path)
