@@ -149,7 +149,7 @@ def main_func(args):
     val_sampler = DistributedSampler(val_dataset, shuffle=False,
                                        drop_last=False)
     # Use Datasets to Create Autoloader
-    train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=True,
+    train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
                               collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
                             collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=val_sampler)

@@ -7,6 +7,7 @@ import os
 from os import path
 from PIL import Image
 from torchvision.transforms import ToTensor, Resize
+import random
 
 class_dict = {
     "pedestrian": 0,
@@ -74,7 +75,8 @@ class BMOTSDataset(Dataset):
                     self.num_vids = self.num_vids + 1
                 else:
                     print(f"No label for video of ID {dir}")
-
+        random.seed(1)
+        random.shuffle(self.subsequence_keys)
         print(f"Dataset constructed with {self.num_vids} videos, creating {self.num_sequences} "
               f"sequences of max size {self.max_sequence_length}")
 

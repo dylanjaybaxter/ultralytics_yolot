@@ -66,7 +66,7 @@ class SequenceValidator():
                 # Put Predictions in right format for NMS
                 pred = torch.cat([stride.view(1, 144, -1) for stride in outputs[i][0]], dim=2)
                 # NMS Call
-                filtered_pred = non_max_suppression(pred, conf_thres=self.conf_thres, 
+                filtered_pred = non_max_suppression(pred, conf_thres=self.conf_thres,
                                                     iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
                 # Get Truth Boxes
