@@ -158,7 +158,6 @@ def main_func(args):
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
-    ckpt = None
     if os.path.exists(model_load_path):
         print(f"Loading model from {model_load_path}")
         ckpt = torch.load(model_load_path)
@@ -194,7 +193,7 @@ def main_func(args):
     model.train()
     best_state = model.module.state_dict()
     loss = 0 # Arbitrary Starting Loss for Display
-    if ckpt['metadata']['epoch']:
+    if ckpt:
         starting_epoch = ckpt['metadata']['epoch']
         skipping = True
     else:
@@ -220,7 +219,7 @@ def main_func(args):
         # Single Epoch Training Loop
         for seq_idx, subsequence in enumerate(pbar):
             # Skip iterations if checkpoint
-            if ckpt['metadata']['iteration'] and ckpt['metadata']['iteration'] > seq_idx and skipping:
+            if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping:
                 continue
             else:
                 skipping = False
