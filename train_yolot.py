@@ -149,30 +149,34 @@ def main_func(args):
     val_sampler = DistributedSampler(val_dataset, shuffle=False,
                                        drop_last=False)
     # Use Datasets to Create Autoloader
-    train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
+    train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=True,
                               collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
                             collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=val_sampler)
 
-    # Wrap Model for parallel processing
+    # Initialize Model
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
-    # if model_load_path:
-    #     model.load_state_dict(torch.load(model_load_path), strict=False)
+    ckpt = None
+    if os.path.exists(model_load_path):
+        print(f"Loading model from {model_load_path}")
+        ckpt = torch.load(model_load_path)
+        model.load_state_dict(ckpt['model'], strict=False)
+
     print(f"Building parallel model with device: {torch.device(device)}")
     #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     dist.barrier()
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     dist.barrier()
     print("model built")
+
+    # Define Optimizer and Scheduler
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
-
-
-    # Define Scheduler
+    if ckpt:
+        optimizer.load_state_dict(ckpt['optimizer'])
     lam1 = lambda epoch: (0.9 ** epoch)
     scheduler = LambdaLR(optimizer, lr_lambda=[lam1])
-    print(f"Number of param groups: {len(optimizer.param_groups)}")
 
     # Attributes bandaid
     class Args(object):
@@ -188,9 +192,17 @@ def main_func(args):
 
     # Main Training Loop
     model.train()
+    best_state = model.module.state_dict()
     loss = 0 # Arbitrary Starting Loss for Display
+    if ckpt['metadata']['epoch']:
+        starting_epoch = ckpt['metadata']['epoch']
+        skipping = True
+    else:
+        starting_epoch = 1
+        skipping = False
 
-    for epoch in range(1,epochs+1):
+
+    for epoch in range(starting_epoch,epochs+1):
         # Sync at the beginning of each epoch
         dist.barrier()
         # Make sure model is in training mode
@@ -207,6 +219,11 @@ def main_func(args):
 
         # Single Epoch Training Loop
         for seq_idx, subsequence in enumerate(pbar):
+            # Skip iterations if checkpoint
+            if ckpt['metadata']['iteration'] and ckpt['metadata']['iteration'] > seq_idx and skipping:
+                continue
+            else:
+                skipping = False
             # Reset and detach hidden states
             model.module.zero_states()
             # Zero Out Leftover Gradients
@@ -232,6 +249,19 @@ def main_func(args):
                 pbar.set_description(f"Seq:{seq_idx+1}/{num_seq}, Loss:{loss:.10e}, lr: {optimizer.param_groups[0]['lr']:.5e}:")
                 tb_writer.add_scalar('Loss', loss, (epoch-1)*len(train_loader)+seq_idx)
                 pbar.refresh()
+        # Save Checkpoint
+        if global_rank == 0:
+            metadata = {
+                'epoch': epoch,
+                'iteration': seq_idx,
+                'loss': loss,
+            }
+            save_obj = {
+                'model': model.module.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'metadata':metadata,
+            }
+            torch.save(save_obj,model_save_path)
 
         # Validate
         model.eval()
@@ -241,8 +271,6 @@ def main_func(args):
             tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
 
         # Detach tensors
-        #for param in model.module.parameters():
-            #param.detach()
         scheduler.step()
 
     # Cleanup

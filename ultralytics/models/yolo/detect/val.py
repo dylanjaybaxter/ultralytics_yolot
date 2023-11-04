@@ -66,7 +66,7 @@ class SequenceValidator():
                 # Put Predictions in right format for NMS
                 pred = torch.cat([stride.view(1, 144, -1) for stride in outputs[i][0]], dim=2)
                 # NMS Call
-                filtered_pred = non_max_suppression(pred, conf_thres=self.conf_thres, max_wh=1,
+                filtered_pred = non_max_suppression(pred, conf_thres=self.conf_thres, 
                                                     iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
                 # Get Truth Boxes
@@ -106,9 +106,9 @@ class SequenceValidator():
                         pred_cls.append(torch.tensor(cls).to(self.device))
                         pred_scores.append(torch.tensor(score).to(self.device))
                 preds.append({
-                    'boxes':torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280),
-                    'labels':torch.stack(pred_cls, dim=0).to(torch.int),
-                    'scores':torch.stack(pred_scores)
+                    'boxes':torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).as_tensor,
+                    'labels':torch.stack(pred_cls, dim=0).to(torch.int).as_tensor,
+                    'scores':torch.stack(pred_scores).as_tensor
                 })
 
             #print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
