@@ -106,7 +106,7 @@ class SequenceValidator():
                         pred_cls.append(torch.tensor(cls).to(self.device))
                         pred_scores.append(torch.tensor(score).to(self.device))
                 # Filter no detection and single detection
-                boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
+                #boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
                 '''if len(pred_cls) > 1:
                     print("normal")
                     #labels = torch.stack(pred_cls, dim=0).to(torch.int)
@@ -117,7 +117,7 @@ class SequenceValidator():
                     print("No Labels")
                     #labels = torch.tensor([])'''
                 preds.append({
-                    'boxes': boxes,
+                    'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280),
                     'labels':torch.stack(pred_cls, dim=0).to(torch.int),
                     'scores':torch.stack(pred_scores)
                 })
