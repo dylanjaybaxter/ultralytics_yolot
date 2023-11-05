@@ -116,13 +116,18 @@ class SequenceValidator():
                 else:
                     print("No Labels")
                     #labels = torch.tensor([])'''
+                boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
+                labels = torch.stack(pred_cls, dim=0)
+                print(labels)
+                label_size = labels.size(0)
+                scores = torch.stack(pred_scores)
                 preds.append({
-                    'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280),
-                    'labels':torch.stack(pred_cls, dim=0),
-                    'scores':torch.stack(pred_scores)
+                    'boxes': boxes,
+                    'labels': labels,
+                    'scores': scores
                 })
-            print(f"Targets({len(targets)}): boxes - {targets}")
-            print(f"Preds({len(preds)}): boxes-{preds}")
+            #print(f"Targets({len(targets)}): boxes - {targets}")
+            #print(f"Preds({len(preds)}): boxes-{preds}")
             seq_mAP = self.map_op(target=targets, preds=preds)
             pprint(seq_mAP)
 
