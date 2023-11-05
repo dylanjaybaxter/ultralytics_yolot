@@ -71,14 +71,9 @@ class SequenceValidator():
                 filtered_pred = non_max_suppression(pred, conf_thres=self.conf_thres,
                                                     iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
-                all_boxes = sequence[0]['bboxes'].reshape(-1,4)
-                boxes = all_boxes[sequence[0]['frame_idx'] == i, :].reshape(-1,4)
-                labels = sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
-                if labels.size() == torch.Size([]):
-                    labels = torch.tensor([labels])
                 targets.append({
-                    'boxes':boxes.to(self.device),
-                    'labels':labels.to(self.device)
+                    'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].reshape(-1,4),
+                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].reshape(-1)
                 })
 
                 # Get predicted boxes
