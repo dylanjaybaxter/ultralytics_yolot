@@ -117,9 +117,9 @@ class SequenceValidator():
                     print("No Labels")
                     #labels = torch.tensor([])'''
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
+                print(boxes)
+                size = boxes.size(0)
                 labels = torch.stack(pred_cls, dim=0)
-                print(labels)
-                label_size = labels.size(0)
                 scores = torch.stack(pred_scores)
                 preds.append({
                     'boxes': boxes,
