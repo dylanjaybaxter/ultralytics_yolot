@@ -127,7 +127,7 @@ class SequenceValidator():
             pprint(seq_mAP)
 
             # Update Progress Bar
-            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['mAP_50']:.2e}")
+            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}")
             pbar.refresh()
 
         # Compute Total Metrics and reset internal state of the metric module
