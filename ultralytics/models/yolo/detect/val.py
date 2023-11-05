@@ -84,7 +84,7 @@ class SequenceValidator():
                         target_classes.append(cls)
                 targets.append({
                     'boxes':sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :],
-                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
+                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i]
                 })
 
                 # Get predicted boxes
@@ -107,7 +107,7 @@ class SequenceValidator():
                         pred_scores.append(torch.tensor(score).to(self.device))
                 # Filter no detection and single detection
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
-                if len(pred_cls) > 1:
+                '''if len(pred_cls) > 1:
                     print("normal")
                     #labels = torch.stack(pred_cls, dim=0).to(torch.int)
                 elif len(pred_cls) == 1:
@@ -115,19 +115,19 @@ class SequenceValidator():
                     #labels = torch.tensor([pred_cls[0]])
                 else:
                     print("No Labels")
-                    #labels = torch.tensor([])
+                    #labels = torch.tensor([])'''
                 preds.append({
                     'boxes': boxes,
                     'labels':torch.stack(pred_cls, dim=0).to(torch.int),
                     'scores':torch.stack(pred_scores)
                 })
-            print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
-            print(f"Preds({len(preds)}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores'].shape}")
-            seq_mAP = self.map_op(target=preds, preds=preds)
+            #print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
+            #print(f"Preds({len(preds)}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores'].shape}")
+            seq_mAP = self.map_op(target=targets, preds=preds)
             #pprint(seq_mAP)
 
             # Update Progress Bar
-            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {total_acc:.2e}")
+            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['mAP50']:.2e}")
             pbar.refresh()
 
         # Compute Total Metrics and reset internal state of the metric module
