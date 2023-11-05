@@ -89,8 +89,8 @@ class SequenceValidator():
                 if labels.size() == torch.Size([]):
                     labels = torch.tensor([labels])
                 targets.append({
-                    'boxes':boxes,
-                    'labels':labels
+                    'boxes':boxes.to(self.device),
+                    'labels':labels.to(self.device)
                 })
 
                 # Get predicted boxes
