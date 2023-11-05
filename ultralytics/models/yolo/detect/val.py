@@ -106,9 +106,9 @@ class SequenceValidator():
                         pred_cls.append(torch.tensor(cls).to(self.device))
                         pred_scores.append(torch.tensor(score).to(self.device))
                 preds.append({
-                    'boxes':torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).as_tensor,
-                    'labels':torch.stack(pred_cls, dim=0).to(torch.int).as_tensor,
-                    'scores':torch.stack(pred_scores).as_tensor
+                    'boxes':torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).unsqueeze(0),
+                    'labels':torch.stack(pred_cls, dim=0).to(torch.int).unsqueeze(0),
+                    'scores':torch.stack(pred_scores).unsqueeze(0)
                 })
 
             #print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
