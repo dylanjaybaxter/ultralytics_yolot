@@ -82,12 +82,8 @@ class SequenceValidator():
                         cls = sequence[0]['cls'][j]
                         target_boxes.append([x1, x2, y1, y2])
                         target_classes.append(cls)
-                if sequence[0]['bboxes'].size() == 1:
-                    boxes = sequence[0]['bboxes'][sequence[0]['frame_idx'] == i].unsqueeze(0)
-                else:
-                    boxes = sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :]
-                    if boxes.size() == 1:
-                        boxes = boxes.unsqueeze(0)
+                all_boxes = sequence[0]['bboxes'].reshape(-1,4)
+                boxes = all_boxes[sequence[0]['frame_idx'] == i, :].reshape(-1,4)
                 labels = sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
                 if labels.size() == torch.Size([]):
                     labels = torch.tensor([labels])
@@ -113,7 +109,7 @@ class SequenceValidator():
                     if((x1 < x2) and (y1 < y2)):
                         pred_boxes.append(torch.tensor([x1, y1, x2, y2]).to(self.device))
                         pred_cls.append(torch.tensor(cls).to(torch.int).to(self.device))
-                        pred_scores.append(torch.tensor(score).to(self.device))
+                        pred_scores.append(score.to(self.device))
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
                 labels = torch.stack(pred_cls, dim=0)
                 scores = torch.stack(pred_scores)
