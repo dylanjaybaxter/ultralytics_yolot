@@ -121,8 +121,8 @@ class SequenceValidator():
                     'labels':torch.stack(pred_cls, dim=0),
                     'scores':torch.stack(pred_scores)
                 })
-            #print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
-            #print(f"Preds({len(preds)}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores'].shape}")
+            print(f"Targets({targets}): boxes-{targets[0]['boxes']}, labels-{targets[0]['labels']}")
+            print(f"Preds({preds}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores']}")
             seq_mAP = self.map_op(target=targets, preds=preds)
             #pprint(seq_mAP)
 
