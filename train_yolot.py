@@ -218,8 +218,8 @@ def main_func(args):
     validator = SequenceValidator(dataloader=val_loader, device=device)
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
-    validator.validate(model)
     model.module.zero_states()
+    validator.validate(model)
 
     # Main Training Loop
     model.train()

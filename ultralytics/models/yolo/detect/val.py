@@ -55,6 +55,9 @@ class SequenceValidator():
         # Iterate through validation data
         average_counter = 0
         for idx, sequence in enumerate(pbar):
+            # Clear hidden states
+            model.module.zero_states()
+
             # Forward Pass for sequence
             with autocast(enabled=True):
                 outputs = model(sequence[0]['img'])
@@ -105,7 +108,7 @@ class SequenceValidator():
             #pprint(seq_mAP)
 
             # Update Progress Bar
-            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {0:.2e}")
+            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map50']:.2e}")
             pbar.refresh()
 
         # Compute Total Metrics and reset internal state of the metric module
