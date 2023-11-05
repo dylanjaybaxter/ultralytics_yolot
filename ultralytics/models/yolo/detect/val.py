@@ -82,9 +82,15 @@ class SequenceValidator():
                         cls = sequence[0]['cls'][j]
                         target_boxes.append([x1, x2, y1, y2])
                         target_classes.append(cls)
+                boxes = sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :]
+                if len(labels.size()) == 1:
+                    boxes = boxes.unsqueeze(0)
+                labels = sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
+                if labels.size() == torch.Size([]):
+                    labels = torch.tensor([labels])
                 targets.append({
-                    'boxes':sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :],
-                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
+                    'boxes':boxes,
+                    'labels':labels
                 })
 
                 # Get predicted boxes
@@ -117,8 +123,6 @@ class SequenceValidator():
                     print("No Labels")
                     #labels = torch.tensor([])'''
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
-                print(boxes)
-                size = boxes.size(0)
                 labels = torch.stack(pred_cls, dim=0)
                 scores = torch.stack(pred_scores)
                 preds.append({
