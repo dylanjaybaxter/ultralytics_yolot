@@ -123,7 +123,7 @@ class SequenceValidator():
                 })
             print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
             print(f"Preds({len(preds)}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores'].shape}")
-            seq_mAP = self.map_op(target=targets, preds=targets)
+            seq_mAP = self.map_op(target=preds, preds=preds)
             #pprint(seq_mAP)
 
             # Update Progress Bar
