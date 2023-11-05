@@ -8,6 +8,6 @@ docker build -f ./yolot_docker/Dockerfile \
 
 docker run -v bdd100k-data:/workspace/dataset \
     -it -p 6006:6006 -e MASTER_ADDR=localhost -e MASTER_PORT=12355 \
-    -v bdd-100k-results:/workspace/results \
+    -v bdd100k-results:/workspace/results \
      --gpus all \
      --ipc=host yolot_trainingimage

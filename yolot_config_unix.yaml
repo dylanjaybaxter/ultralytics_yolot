@@ -7,14 +7,16 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 # YOLOT Training Script settings
 gpu_workers: 1
 DEBUG: False
-met_save_path: "/workspace/results/metrics/"
+run_name: "test"
+load_name: "test"
+met_save_path: "/workspace/results/"
 model_save_path: "/workspace/results/checkpoints/checkpoint.pth"
 model_load_path: "/workspace/results/checkpoints/checkpoint.pth"
 pt_load_path: ""
 seq_len: 6
 visualize: False
 prof: False
-lr0: 0.05  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
+lr0: 0.1  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 log_dir: "/workspace/results/tensor_board/"
 
 # Train settings -------------------------------------------------------------------------------------------------------

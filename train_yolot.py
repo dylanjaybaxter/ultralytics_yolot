@@ -112,16 +112,44 @@ def main_func(args):
         DEBUG = conf['DEBUG']
         prof = conf['prof']
         log_dir = conf['log_dir']
+        run_name = conf['run_name']
 
 
     if global_rank == 0:
+
+        # Create File structure for the run
+        # Read list of existing runs
+        dirs = os.listdir(metrics_save_path)
+        # If run directory already exists, look for checkpoint
+        if os.path.exists(os.path.join(metrics_save_path, run_name)):
+            # Look for checkpoint
+            print(f"Continuing Run: {run_name}")
+            if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
+                model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
+                model_save_path = model_load_path
+                print("Using previous checkpoint...")
+            else:
+                print("Starting model from scratch")
+        else:
+            # Create new file structure
+            print(f"Creating new run: {run_name}")
+            os.mkdir(os.path.join(metrics_save_path, run_name))
+            os.mkdir(os.path.join(metrics_save_path, run_name, "weights"))
+            model_load_path = ""
+            model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+            os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
+            log_dir = os.path.join(metrics_save_path, run_name, "tb")
+            os.mkdir(os.path.join(metrics_save_path, run_name, "other"))
+
         # Initialize Tensorboard
         dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tb = program.TensorBoard()
         tb.configure(argv=[None, '--logdir', os.path.join(log_dir, dt), '--bind_all'])
         url = tb.launch()
-        print(f"Tensorboard started listening to {os.path.join(log_dir, dt)} and broadcasting on {url}")
-        tb_writer = SummaryWriter(log_dir=os.path.join(log_dir, dt))
+        print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
+        tb_writer = SummaryWriter(log_dir=log_dir)
+
+
 
     # Setup Device
     print_cuda_info()
@@ -188,6 +216,7 @@ def main_func(args):
 
     # Create Validator and make sure that model states are zeroed
     validator = SequenceValidator(dataloader=val_loader, device=device)
+    validator.validate(model)
     model.module.zero_states()
 
     # Main Training Loop
