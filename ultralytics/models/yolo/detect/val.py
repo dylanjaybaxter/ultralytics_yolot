@@ -57,7 +57,9 @@ class SequenceValidator():
         for idx, sequence in enumerate(pbar):
             # Forward Pass for sequence
             with autocast(enabled=True):
-                outputs = model(sequence[0]['img'].to(self.device))
+                outputs = model(sequence[0]['img'])
+
+            # Take the image off the gpu
 
             # Extract Bounding Boxes for the sequences
             preds = []
@@ -69,19 +71,6 @@ class SequenceValidator():
                 filtered_pred = non_max_suppression(pred, conf_thres=self.conf_thres,
                                                     iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
-                # Get Truth Boxes
-                target_boxes = []
-                target_classes = []
-                for j in range(sequence[0]['bboxes'].size()[0]):
-                    if sequence[0]['frame_idx'][j] == i:
-                        box = sequence[0]['bboxes'][j, :]
-                        x1 = int((box[0] - 0.5 * box[2]))
-                        y1 = int((box[1] - 0.5 * box[3]))
-                        x2 = int((box[0] + 0.5 * box[2]))
-                        y2 = int((box[1] + 0.5 * box[3]))
-                        cls = sequence[0]['cls'][j]
-                        target_boxes.append([x1, x2, y1, y2])
-                        target_classes.append(cls)
                 all_boxes = sequence[0]['bboxes'].reshape(-1,4)
                 boxes = all_boxes[sequence[0]['frame_idx'] == i, :].reshape(-1,4)
                 labels = sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
@@ -107,18 +96,20 @@ class SequenceValidator():
                     y2 = int((box[1] + 0.5 * box[3]))
                     # Only assign if box is in correct format
                     if((x1 < x2) and (y1 < y2)):
-                        pred_boxes.append(torch.tensor([x1, y1, x2, y2]).to(self.device))
-                        pred_cls.append(cls.to(torch.int).to(self.device))
-                        pred_scores.append(score.to(self.device))
+                        pred_boxes.append(torch.tensor([x1, y1, x2, y2]))
+                        pred_cls.append(cls.to(torch.int))
+                        pred_scores.append(score)
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
                 labels = torch.stack(pred_cls, dim=0)
                 scores = torch.stack(pred_scores)
                 preds.append({
-                    'boxes': boxes,
-                    'labels': labels,
-                    'scores': scores
+                    'boxes': boxes.to(self.device),
+                    'labels': labels.to(self.device),
+                    'scores': scores.to(self.device)
                 })
             seq_mAP = self.map_op(target=targets, preds=preds)
+            targets = None
+            preds = None
             #pprint(seq_mAP)
 
             # Update Progress Bar

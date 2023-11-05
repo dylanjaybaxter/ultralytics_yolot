@@ -185,9 +185,9 @@ class BMOTSDataset(Dataset):
             sample['bboxes'] = torch.stack(bboxes, dim=0).to(self.device)
             sample['frame_idx'] = torch.stack(frame_ids).to(self.device)
         else:
-            sample['cls'] = torch.Tensor([])
-            sample['bboxes'] = torch.Tensor([])
-            sample['frame_idx'] = torch.Tensor([])
+            sample['cls'] = torch.Tensor([]).to(self.device)
+            sample['bboxes'] = torch.Tensor([]).to(self.device)
+            sample['frame_idx'] = torch.Tensor([]).to(self.device)
         sample['batch_idx'] = sample['frame_idx']  # For access by loss calculation
         sample['ratio_pad'] = ratio_pads
 
