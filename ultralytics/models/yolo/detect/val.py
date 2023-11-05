@@ -94,21 +94,18 @@ class SequenceValidator():
                         pred_boxes.append(torch.tensor([x1, y1, x2, y2]))
                         pred_cls.append(cls.to(torch.int))
                         pred_scores.append(score)
-                boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
-                labels = torch.stack(pred_cls, dim=0)
-                scores = torch.stack(pred_scores)
                 preds.append({
-                    'boxes': boxes.to(self.device),
-                    'labels': labels.to(self.device),
-                    'scores': scores.to(self.device)
+                    'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).to(self.device),
+                    'labels': torch.stack(pred_cls, dim=0).to(self.device),
+                    'scores': torch.stack(pred_scores).to(self.device)
                 })
-            seq_mAP = self.map_op(target=targets, preds=preds)
+            #seq_mAP = self.map_op(target=targets, preds=preds)
             targets = None
             preds = None
             #pprint(seq_mAP)
 
             # Update Progress Bar
-            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}")
+            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {0:.2e}")
             pbar.refresh()
 
         # Compute Total Metrics and reset internal state of the metric module
