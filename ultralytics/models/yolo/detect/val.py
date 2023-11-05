@@ -108,7 +108,7 @@ class SequenceValidator():
                     # Only assign if box is in correct format
                     if((x1 < x2) and (y1 < y2)):
                         pred_boxes.append(torch.tensor([x1, y1, x2, y2]).to(self.device))
-                        pred_cls.append(torch.tensor(cls).to(torch.int).to(self.device))
+                        pred_cls.append(cls.to(torch.int).to(self.device))
                         pred_scores.append(score.to(self.device))
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
                 labels = torch.stack(pred_cls, dim=0)
