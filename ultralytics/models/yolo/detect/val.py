@@ -84,7 +84,7 @@ class SequenceValidator():
                         target_classes.append(cls)
                 targets.append({
                     'boxes':sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :],
-                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i]
+                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
                 })
 
                 # Get predicted boxes
