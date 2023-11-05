@@ -216,6 +216,8 @@ def main_func(args):
 
     # Create Validator and make sure that model states are zeroed
     validator = SequenceValidator(dataloader=val_loader, device=device)
+    validator.dataloader.sampler.set_epoch(0)
+    model.eval()
     validator.validate(model)
     model.module.zero_states()
 
