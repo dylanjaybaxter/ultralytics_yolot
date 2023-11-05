@@ -82,9 +82,9 @@ class SequenceValidator():
                         cls = sequence[0]['cls'][j]
                         target_boxes.append([x1, x2, y1, y2])
                         target_classes.append(cls)
-                boxes = sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :]
                 if len(boxes.size()) == 1:
                     boxes = boxes.unsqueeze(0)
+                boxes = sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :]
                 labels = sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
                 if labels.size() == torch.Size([]):
                     labels = torch.tensor([labels])
@@ -111,17 +111,6 @@ class SequenceValidator():
                         pred_boxes.append(torch.tensor([x1, y1, x2, y2]).to(self.device))
                         pred_cls.append(torch.tensor(cls).to(torch.int).to(self.device))
                         pred_scores.append(torch.tensor(score).to(self.device))
-                # Filter no detection and single detection
-                #boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
-                '''if len(pred_cls) > 1:
-                    print("normal")
-                    #labels = torch.stack(pred_cls, dim=0).to(torch.int)
-                elif len(pred_cls) == 1:
-                    print("scalar")
-                    #labels = torch.tensor([pred_cls[0]])
-                else:
-                    print("No Labels")
-                    #labels = torch.tensor([])'''
                 boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
                 labels = torch.stack(pred_cls, dim=0)
                 scores = torch.stack(pred_scores)
@@ -130,10 +119,8 @@ class SequenceValidator():
                     'labels': labels,
                     'scores': scores
                 })
-            #print(f"Targets({len(targets)}): boxes - {targets}")
-            #print(f"Preds({len(preds)}): boxes-{preds}")
             seq_mAP = self.map_op(target=targets, preds=preds)
-            pprint(seq_mAP)
+            #pprint(seq_mAP)
 
             # Update Progress Bar
             pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}")
