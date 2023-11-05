@@ -83,7 +83,7 @@ class SequenceValidator():
                         target_boxes.append([x1, x2, y1, y2])
                         target_classes.append(cls)
                 boxes = sequence[0]['bboxes'][sequence[0]['frame_idx'] == i, :]
-                if len(labels.size()) == 1:
+                if len(boxes.size()) == 1:
                     boxes = boxes.unsqueeze(0)
                 labels = sequence[0]['cls'][sequence[0]['frame_idx'] == i].squeeze()
                 if labels.size() == torch.Size([]):
