@@ -105,14 +105,21 @@ class SequenceValidator():
                         pred_boxes.append(torch.tensor([x1, y1, x2, y2]).to(self.device))
                         pred_cls.append(torch.tensor(cls).to(self.device))
                         pred_scores.append(torch.tensor(score).to(self.device))
+                # Filter no detection and single detection
+                boxes = torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280)
+                '''if len(pred_cls) > 1:
+                    labels = torch.stack(pred_cls, dim=0).to(torch.int)
+                elif len(pred_cls) == 1:
+                    labels = torch.tensor([pred_cls[0]])
+                else:
+                    labels = torch.tensor([])'''
                 preds.append({
-                    'boxes':torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280),
+                    'boxes': boxes,
                     'labels':torch.stack(pred_cls, dim=0).to(torch.int),
                     'scores':torch.stack(pred_scores)
                 })
-
-            #print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
-            #print(f"Preds({len(preds)}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores'].shape}")
+            print(f"Targets({len(targets)}): boxes-{targets[0]['boxes'].shape}, labels-{targets[0]['labels']}")
+            print(f"Preds({len(preds)}): boxes-{preds[0]['boxes']}, labels-{preds[0]['labels']}, scores{preds[0]['scores'].shape}")
             seq_mAP = self.map_op(target=targets, preds=preds)
             #pprint(seq_mAP)
 
