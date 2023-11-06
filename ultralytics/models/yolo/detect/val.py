@@ -36,6 +36,7 @@ class SequenceValidator():
                                             class_metrics=True, respect_labels=True).to(device)
         self.map_op = MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25,0.5,0.75,0.95],
                                            class_metrics=False, extended_summary=False)
+        self.global_rank = int(os.environ["RANK"])
 
     def validate(self, model):
         with torch.no_grad():
@@ -74,8 +75,8 @@ class SequenceValidator():
                                                         iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
                     targets.append({
-                        'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].detach().reshape(-1,4).to(self.device),
-                        'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].detach().reshape(-1).to(self.device)
+                        'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].detach().clone().reshape(-1,4).to(self.device),
+                        'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].detach().clone().reshape(-1).to(self.device)
                     })
 
                     # Get predicted boxes
@@ -97,16 +98,16 @@ class SequenceValidator():
                             pred_cls.append(cls.to(torch.int))
                             pred_scores.append(score)
                     preds.append({
-                        'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).detach().to(self.device),
-                        'labels': torch.stack(pred_cls, dim=0).detach().to(self.device),
-                        'scores': torch.stack(pred_scores).detach().to(self.device)
+                        'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).detach().clone().to(self.device),
+                        'labels': torch.stack(pred_cls, dim=0).detach().clone().to(self.device),
+                        'scores': torch.stack(pred_scores).detach().clone().to(self.device)
                     })
                 # Calculate mAP of sequence
                 seq_mAP = self.map_op(target=targets, preds=preds)
 
                 # Hey, compute every once in a while yeah?
                 metric_counter = metric_counter + 1
-                if metric_counter > 5:
+                if metric_counter > 5 and self.global_rank == 0:
                     with torch.no_grad():
                         run_mAP = self.map_op.compute()
                     metric_counter = 0
