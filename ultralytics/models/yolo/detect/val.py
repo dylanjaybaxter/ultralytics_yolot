@@ -108,7 +108,7 @@ class SequenceValidator():
                 # Hey, compute every once in a while yeah?
                 metric_counter = metric_counter + 1
                 dist.barrier()
-                if metric_counter > 5 and self.global_rank == 0:
+                if metric_counter > 5:
                     with torch.no_grad():
                         run_mAP = self.map_op.compute()
                     metric_counter = 0

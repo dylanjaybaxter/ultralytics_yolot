@@ -219,8 +219,10 @@ def main_func(args):
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
-    validator.validate(model)
-
+    if global_rank == 0:
+        validator.validate(model)
+    dist.barrier()
+    
     # Main Training Loop
     model.train()
     best_state = model.module.state_dict()
