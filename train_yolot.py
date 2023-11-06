@@ -215,7 +215,7 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    validator = SequenceValidator(dataloader=val_loader, device='cpu')
+    validator = SequenceValidator(dataloader=val_loader, device=device)
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()

@@ -74,8 +74,8 @@ class SequenceValidator():
                                                         iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
                     targets.append({
-                        'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].reshape(-1,4),
-                        'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].reshape(-1)
+                        'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].reshape(-1,4).to(self.device),
+                        'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].reshape(-1).to(self.device)
                     })
 
                     # Get predicted boxes
