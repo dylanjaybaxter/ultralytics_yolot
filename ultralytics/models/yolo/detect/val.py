@@ -37,7 +37,6 @@ class SequenceValidator():
         self.map_op = MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25,0.5,0.75,0.95],
                                            class_metrics=False, extended_summary=False)
 
-
     def validate(self, model):
         with torch.no_grad():
             # Setup Metrics
@@ -55,7 +54,7 @@ class SequenceValidator():
             pbar_desc = f'Seq:0/{num_seq} | Acc: {total_acc:.2e}'
             pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
             # Iterate through validation data
-            metric_counter = 20
+            metric_counter = 50
             for idx, sequence in enumerate(pbar):
                 # Clear hidden states
                 model.module.zero_states()
@@ -102,11 +101,13 @@ class SequenceValidator():
                         'labels': torch.stack(pred_cls, dim=0).detach().to(self.device),
                         'scores': torch.stack(pred_scores).detach().to(self.device)
                     })
+                # Calculate mAP of sequence
                 seq_mAP = self.map_op(target=targets, preds=preds)
-                dist.barrier()
+
                 # Hey, compute every once in a while yeah?
                 metric_counter = metric_counter + 1
-                if metric_counter > 20:
+                if metric_counter > 50:
+                    dist.barrier()
                     run_mAP = self.map_op.compute()
                     metric_counter = 0
                 targets = None
