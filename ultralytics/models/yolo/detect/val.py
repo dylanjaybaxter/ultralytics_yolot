@@ -55,7 +55,7 @@ class SequenceValidator():
             pbar_desc = f'Seq:0/{num_seq} | Acc: {total_acc:.2e}'
             pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
             # Iterate through validation data
-            metric_counter = 0
+            metric_counter = 20
             for idx, sequence in enumerate(pbar):
                 # Clear hidden states
                 model.module.zero_states()
