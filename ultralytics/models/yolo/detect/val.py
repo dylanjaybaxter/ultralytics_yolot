@@ -106,7 +106,7 @@ class SequenceValidator():
 
                 # Hey, compute every once in a while yeah?
                 metric_counter = metric_counter + 1
-                if metric_counter > 50:
+                if metric_counter > 5:
                     dist.barrier()
                     run_mAP = self.map_op.compute()
                     metric_counter = 0
