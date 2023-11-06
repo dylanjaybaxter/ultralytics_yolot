@@ -18,6 +18,7 @@ from ultralytics.utils.torch_utils import de_parallel
 from torchmetrics.detection import IntersectionOverUnion, MeanAveragePrecision
 from torchvision.ops import nms
 from pprint import pprint
+import torch.distributed as dist
 
 
 # Added
@@ -54,7 +55,7 @@ class SequenceValidator():
             pbar_desc = f'Seq:0/{num_seq} | Acc: {total_acc:.2e}'
             pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
             # Iterate through validation data
-            average_counter = 0
+            metric_counter = 0
             for idx, sequence in enumerate(pbar):
                 # Clear hidden states
                 model.module.zero_states()
@@ -102,7 +103,12 @@ class SequenceValidator():
                         'scores': torch.stack(pred_scores).detach().to(self.device)
                     })
                 seq_mAP = self.map_op(target=targets, preds=preds)
-                run_mAP = self.map_op.compute()
+                dist.barrier()
+                # Hey, compute every once in a while yeah?
+                metric_counter = metric_counter + 1
+                if metric_counter > 20:
+                    run_mAP = self.map_op.compute()
+                    metric_counter = 0
                 targets = None
                 preds = None
                 #pprint(seq_mAP)
