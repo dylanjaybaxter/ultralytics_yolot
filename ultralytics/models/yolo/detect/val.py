@@ -38,82 +38,84 @@ class SequenceValidator():
 
 
     def validate(self, model):
-        # Setup Metrics
-        self.metrics = {}
-        total_acc = 0
-        total_fp = 0
+        with torch.no_grad():
+            # Setup Metrics
+            self.metrics = {}
+            total_acc = 0
+            total_fp = 0
 
-        # Set model to val
-        model.eval()
+            # Set model to val
+            model.eval()
 
-        # Setup Progress Bar
-        # Set Up Loading bar for epoch
-        bar_format = f"::Val|{{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
-        num_seq = len(self.dataloader)
-        pbar_desc = f'Seq:0/{num_seq} | Acc: {total_acc:.2e}'
-        pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
-        # Iterate through validation data
-        average_counter = 0
-        for idx, sequence in enumerate(pbar):
-            # Clear hidden states
-            model.module.zero_states()
+            # Setup Progress Bar
+            # Set Up Loading bar for epoch
+            bar_format = f"::Val|{{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
+            num_seq = len(self.dataloader)
+            pbar_desc = f'Seq:0/{num_seq} | Acc: {total_acc:.2e}'
+            pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
+            # Iterate through validation data
+            average_counter = 0
+            for idx, sequence in enumerate(pbar):
+                # Clear hidden states
+                model.module.zero_states()
 
-            # Forward Pass for sequence
-            with autocast(enabled=True):
-                outputs = model(sequence[0]['img'])
+                # Forward Pass for sequence
+                with autocast(enabled=True):
+                    outputs = model(sequence[0]['img'])
 
-            # Extract Bounding Boxes for the sequences
-            preds = []
-            targets = []
-            for i in range(sequence[0]['img'].size()[0]):
-                # Put Predictions in right format for NMS
-                pred = torch.cat([stride.view(1, 144, -1) for stride in outputs[i][0]], dim=2)
-                # NMS Call
-                filtered_pred = non_max_suppression(pred.detach(), conf_thres=self.conf_thres,
-                                                    iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
+                # Extract Bounding Boxes for the sequences
+                preds = []
+                targets = []
+                for i in range(sequence[0]['img'].size()[0]):
+                    # Put Predictions in right format for NMS
+                    pred = torch.cat([stride.view(1, 144, -1) for stride in outputs[i][0]], dim=2)
+                    # NMS Call
+                    filtered_pred = non_max_suppression(pred.detach(), conf_thres=self.conf_thres,
+                                                        iou_thres=self.iou_thres, classes=[0, 1, 2], max_det=25)
 
-                targets.append({
-                    'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].reshape(-1,4),
-                    'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].reshape(-1)
-                })
+                    targets.append({
+                        'boxes':sequence[0]['bboxes'].reshape(-1,4)[sequence[0]['frame_idx'] == i, :].reshape(-1,4),
+                        'labels':sequence[0]['cls'][sequence[0]['frame_idx'] == i].reshape(-1)
+                    })
 
-                # Get predicted boxes
-                pred_boxes = []
-                pred_cls = []
-                pred_scores = []
-                for pred_ind in range(filtered_pred[0].size()[0]):
-                    # Check for class 1
-                    box = filtered_pred[0][pred_ind, 0:4]
-                    cls = filtered_pred[0][pred_ind, 5]
-                    score = filtered_pred[0][pred_ind, 4]
-                    x1 = int((box[0] - 0.5 * box[2]))
-                    y1 = int((box[1] - 0.5 * box[3]))
-                    x2 = int((box[0] + 0.5 * box[2]))
-                    y2 = int((box[1] + 0.5 * box[3]))
-                    # Only assign if box is in correct format
-                    if((x1 < x2) and (y1 < y2)):
-                        pred_boxes.append(torch.tensor([x1, y1, x2, y2]))
-                        pred_cls.append(cls.to(torch.int))
-                        pred_scores.append(score)
-                preds.append({
-                    'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).detach().to(self.device),
-                    'labels': torch.stack(pred_cls, dim=0).detach().to(self.device),
-                    'scores': torch.stack(pred_scores).detach().to(self.device)
-                })
-            seq_mAP = self.map_op(target=targets, preds=preds)
-            targets = None
-            preds = None
-            #pprint(seq_mAP)
+                    # Get predicted boxes
+                    pred_boxes = []
+                    pred_cls = []
+                    pred_scores = []
+                    for pred_ind in range(filtered_pred[0].size()[0]):
+                        # Check for class 1
+                        box = filtered_pred[0][pred_ind, 0:4]
+                        cls = filtered_pred[0][pred_ind, 5]
+                        score = filtered_pred[0][pred_ind, 4]
+                        x1 = int((box[0] - 0.5 * box[2]))
+                        y1 = int((box[1] - 0.5 * box[3]))
+                        x2 = int((box[0] + 0.5 * box[2]))
+                        y2 = int((box[1] + 0.5 * box[3]))
+                        # Only assign if box is in correct format
+                        if((x1 < x2) and (y1 < y2)):
+                            pred_boxes.append(torch.tensor([x1, y1, x2, y2]))
+                            pred_cls.append(cls.to(torch.int))
+                            pred_scores.append(score)
+                    preds.append({
+                        'boxes': torch.clip(torch.stack(pred_boxes, dim=0), min=0, max=1280).detach().to(self.device),
+                        'labels': torch.stack(pred_cls, dim=0).detach().to(self.device),
+                        'scores': torch.stack(pred_scores).detach().to(self.device)
+                    })
+                seq_mAP = self.map_op(target=targets, preds=preds)
+                run_mAP = self.map_op.compute()
+                targets = None
+                preds = None
+                #pprint(seq_mAP)
 
-            # Update Progress Bar
-            pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}")
-            pbar.refresh()
+                # Update Progress Bar
+                pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {run_mAP['map_50']:.2e}")
+                pbar.refresh()
 
-        # Compute Total Metrics and reset internal state of the metric module
-        epoch_results = self.map_op.compute()
-        self.map_op.reset()
+            # Compute Total Metrics and reset internal state of the metric module
+            epoch_results = self.map_op.compute()
+            self.map_op.reset()
 
-        return epoch_results
+            return epoch_results
 
 
     def determine_overlap(self, tbox, pbox):
