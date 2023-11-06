@@ -18,6 +18,7 @@ WORKDIR /workspace
 RUN rm -rf /workspace
 COPY . /workspace
 RUN pip install -r requirements.txt
+RUN pip install --upgrade torchmetrics
 
 # When started run the training
 CMD python3 -m torch.distributed.run --nnodes=1 --nproc_per_node=2 train_yolot.py --conf yolot_config_unix.yaml
