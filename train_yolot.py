@@ -245,7 +245,7 @@ def main_func(args):
         # Set Up Loading bar for epoch
         bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
         pbar_desc = f"Seq:.../..., Loss: {loss:.10e}, lr: {optimizer.param_groups[0]['lr']:.5e}"
-        pbar = tqdm(train_loader, desc=pbar_desc, bar_format=bar_format, ascii=False)
+        pbar = tqdm(train_loader, desc=pbar_desc, bar_format=bar_format, ascii=False, disable=(global_rank != 0))
         num_seq = len(train_loader)
 
         # Single Epoch Training Loop

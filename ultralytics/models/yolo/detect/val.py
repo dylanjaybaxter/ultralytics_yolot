@@ -50,7 +50,7 @@ class SequenceValidator():
             bar_format = f"::Val|{{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
             num_seq = len(self.dataloader)
             pbar_desc = f'Seq:0/{num_seq} | Acc: {total_acc:.2e}'
-            pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
+            pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False, disable=(self.global_rank != 0))
             # Iterate through validation data
             metric_counter = 50
             running_averages = {
