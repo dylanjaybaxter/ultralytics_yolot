@@ -112,6 +112,7 @@ def main_func(args):
         DEBUG = conf['DEBUG']
         prof = conf['prof']
         log_dir = conf['log_dir']
+        log_port = conf['log_port']
         run_name = conf['run_name']
 
 
@@ -144,8 +145,9 @@ def main_func(args):
 
         # Initialize Tensorboard
         dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_dir = os.path.join(log_dir, dt)
         tb = program.TensorBoard()
-        tb.configure(argv=[None, '--logdir', os.path.join(log_dir, dt), '--bind_all'])
+        tb.configure(argv=[None, '--logdir', log_dir, '--port', log_port, '--bind_all'])
         url = tb.launch()
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
         tb_writer = SummaryWriter(log_dir=log_dir)
@@ -304,6 +306,7 @@ def main_func(args):
     # Cleanup
     tb_writer.close()
     dist.destroy_process_group()
+    tb.kill()
     # Evalutation
     print("Training Complete:)")
 
