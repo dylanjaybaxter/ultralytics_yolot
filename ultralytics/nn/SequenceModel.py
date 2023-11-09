@@ -23,7 +23,7 @@ class SequenceModel(DetectionModel):
         self.device = 'cpu'
         super().__init__(cfg, verbose=verbose)
         self.device = device
-        self.criterion = self.init_criterion()
+        #self.criterion = self.init_criterion()
 
     def forward(self, x):
         predictions, _ = self.process_sequence(x)
