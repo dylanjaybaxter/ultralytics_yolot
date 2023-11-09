@@ -56,6 +56,9 @@ class SequenceValidator():
             pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False)
             # Iterate through validation data
             metric_counter = 50
+            running_averages = {
+                'mAP_50':0
+            }
             for idx, sequence in enumerate(pbar):
                 # Clear hidden states
                 model.module.zero_states()
@@ -105,19 +108,15 @@ class SequenceValidator():
                 # Calculate mAP of sequence
                 seq_mAP = self.map_op(target=targets, preds=preds)
 
-                # Hey, compute every once in a while yeah?
-                metric_counter = metric_counter + 1
-                dist.barrier()
-                if metric_counter > 5:
-                    with torch.no_grad():
-                        run_mAP = self.map_op.compute()
-                    metric_counter = 0
+                # Calculate Running Averages
+                running_averages['mAP_50'] = ((running_averages['mAP_50'] * idx) + seq_mAP['map_50'])/(idx+1)
+
+                # Reset Targets and Predictions and hopefully free tensors
                 targets = None
                 preds = None
-                #pprint(seq_mAP)
 
                 # Update Progress Bar
-                pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {run_mAP['map_50']:.2e}")
+                pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {running_averages['map_50']:.2e}")
                 pbar.refresh()
 
             # Compute Total Metrics and reset internal state of the metric module
