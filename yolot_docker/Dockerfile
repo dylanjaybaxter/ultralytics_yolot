@@ -21,4 +21,4 @@ RUN pip install -r requirements.txt
 RUN pip install --upgrade torchmetrics
 
 # When started run the training
-CMD python3 -m torch.distributed.run --nnodes=1 --nproc_per_node=2 train_yolot.py --conf yolot_config_unix.yaml
+CMD python3 -m torch.distributed.run --nnodes=1 --nproc_per_node=1 train_yolot.py --conf yolot_config_unix.yaml
