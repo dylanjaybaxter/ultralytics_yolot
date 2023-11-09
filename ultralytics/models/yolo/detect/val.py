@@ -53,7 +53,7 @@ class SequenceValidator():
             # Iterate through validation data
             metric_counter = 50
             running_averages = {
-                'mAP_50':0
+                'map_50':0
             }
             for idx, sequence in enumerate(pbar):
                 # Clear hidden states
@@ -105,7 +105,7 @@ class SequenceValidator():
                 seq_mAP = self.map_op(target=targets, preds=preds)
 
                 # Calculate Running Averages
-                running_averages['mAP_50'] = ((running_averages['mAP_50'] * idx) + seq_mAP['map_50'])/(idx+1)
+                running_averages['map_50'] = ((running_averages['map_50'] * idx) + seq_mAP['map_50'])/(idx+1)
 
                 # Reset Targets and Predictions and hopefully free tensors
                 targets = None
