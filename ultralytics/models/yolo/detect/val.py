@@ -19,6 +19,7 @@ from torchmetrics.detection import IntersectionOverUnion, MeanAveragePrecision
 from torchvision.ops import nms
 from pprint import pprint
 import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 # Added
@@ -26,16 +27,23 @@ from torch.cuda.amp import autocast
 
 
 class SequenceValidator():
-    def __init__(self, dataloader, iou_thres=0.8, conf_thres=0.8, class_dict=None, device='cpu', tb_writer=None):
+    def __init__(self, dataloader, iou_thres=0.8, conf_thres=0.8, class_dict=None, device='cpu', tb_writer=None, ddp=True):
         self.dataloader = dataloader
         self.iou_thres = iou_thres
         self.conf_thres = conf_thres
         self.class_dict = class_dict
         self.device = device
-        self.iou_op = IntersectionOverUnion(box_format='xyxy', iou_threshold=iou_thres,
-                                            class_metrics=True, respect_labels=True).to(device)
-        self.map_op = MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25,0.5,0.75,0.95],
-                                           class_metrics=False, extended_summary=False)
+        #self.iou_op = IntersectionOverUnion(box_format='xyxy', iou_threshold=iou_thres,
+        #                                    class_metrics=True, respect_labels=True).to(device)
+        if ddp:
+            local_rank = os.environ['LOCAL_RANK']
+            self.map_op = DDP(
+                MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25, 0.5, 0.75, 0.95],
+                                     class_metrics=False, extended_summary=False), device_ids=[local_rank],
+                output_device=local_rank)
+        else:
+            self.map_op = MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25,0.5,0.75,0.95],
+                                               class_metrics=False, extended_summary=False)
         self.global_rank = int(os.environ["RANK"])
 
     def validate(self, model):
@@ -110,7 +118,7 @@ class SequenceValidator():
                 dist.barrier()
                 if metric_counter > 5:
                     with torch.no_grad():
-                        run_mAP = self.map_op.compute()
+                        run_mAP = self.map_op.module.compute()
                     metric_counter = 0
                 targets = None
                 preds = None
@@ -121,7 +129,7 @@ class SequenceValidator():
                 pbar.refresh()
 
             # Compute Total Metrics and reset internal state of the metric module
-            epoch_results = self.map_op.compute()
+            epoch_results = self.map_op.module.compute()
             self.map_op.reset()
 
             return epoch_results
