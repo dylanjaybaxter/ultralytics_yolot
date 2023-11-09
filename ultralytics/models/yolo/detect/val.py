@@ -34,6 +34,7 @@ class SequenceValidator():
                                            class_metrics=False, extended_summary=False).to(device)
         self.global_rank = int(os.environ["RANK"])
         self.local_rank = int(os.environ["LOCAL_RANK"])
+        self.running_metrics = {}
 
     def validate(self, model):
         with torch.no_grad():
@@ -53,9 +54,6 @@ class SequenceValidator():
             pbar = tqdm(self.dataloader, desc=pbar_desc, bar_format=bar_format, ascii=False, disable=(self.global_rank != 0))
             # Iterate through validation data
             metric_counter = 50
-            running_averages = {
-                'map_50':0
-            }
             for idx, sequence in enumerate(pbar):
                 # Clear hidden states
                 model.module.zero_states()
@@ -106,8 +104,10 @@ class SequenceValidator():
                 seq_mAP = self.map_op(target=targets, preds=preds)
 
                 # Calculate Running Averages
-                if seq_mAP['map_50'] >= 0:
-                    running_averages['map_50'] = ((running_averages['map_50'] * idx) + seq_mAP['map_50'])/(idx+1)
+                if idx == 0:
+                    self.init_metrics(seq_mAP)
+                else:
+                    self.update_metrics(seq_mAP, idx)
 
                 # Reset Targets and Predictions and hopefully free tensors
                 targets = None
@@ -118,11 +118,9 @@ class SequenceValidator():
                     pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {running_averages['map_50']:.2e}")
                     pbar.refresh()
 
-            # Compute Total Metrics and reset internal state of the metric module
-            epoch_results = running_averages
             self.map_op.reset()
 
-            return epoch_results
+            return self.metrics
 
 
     def determine_overlap(self, tbox, pbox):
@@ -145,6 +143,26 @@ class SequenceValidator():
         else:
             overlap = 0
         return overlap
+
+    def init_metrics(self, meas):
+        '''
+        Creates fields in the metrics dict based on a target dict and initializes them
+        :param meas:
+        :return:
+        '''
+        for key in meas.keys:
+            self.metrics[key] = meas[key]
+
+    def update_metrics(self, new_meas, idx):
+        '''
+        Updates metrics as running average in the metrics dict if they exist and have same key as target
+        :param new_meas:
+        :param idx:
+        :return:
+        '''
+        for key in new_meas.keys:
+            if key in self.metrics and new_meas[key] >= 0:
+                self.metrics[key] = ((self.metrics[key] * idx) + new_meas[key])/(idx+1)
 
     def determine_overlap_2d(self, tbox, pbox):
         '''
