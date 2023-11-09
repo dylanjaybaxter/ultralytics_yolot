@@ -16,10 +16,6 @@ from ultralytics.utils.ops import non_max_suppression
 from ultralytics.utils.plotting import output_to_target, plot_images
 from ultralytics.utils.torch_utils import de_parallel
 from torchmetrics.detection import IntersectionOverUnion, MeanAveragePrecision
-from torchvision.ops import nms
-from pprint import pprint
-import torch.distributed as dist
-
 
 # Added
 from torch.cuda.amp import autocast
@@ -120,7 +116,7 @@ class SequenceValidator():
                 pbar.refresh()
 
             # Compute Total Metrics and reset internal state of the metric module
-            epoch_results = self.map_op.compute()
+            epoch_results = running_averages
             self.map_op.reset()
 
             return epoch_results
