@@ -160,8 +160,9 @@ class SequenceValidator():
         :param idx:
         :return:
         '''
+        print(self.metrics)
         for key in new_meas.keys():
-            if key in self.metrics and new_meas[key] >= 0:
+            if key in self.metrics and new_meas[key] and new_meas[key] >= 0:
                 self.metrics[key] = ((self.metrics[key] * idx) + new_meas[key])/(idx+1)
 
     def determine_overlap_2d(self, tbox, pbox):
