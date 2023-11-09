@@ -219,7 +219,7 @@ def main_func(args):
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
-    validator.validate(model)
+    #validator.validate(model)
 
     # Main Training Loop
     model.train()
