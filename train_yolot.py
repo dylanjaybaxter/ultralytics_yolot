@@ -147,7 +147,7 @@ def main_func(args):
         dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         log_dir = os.path.join(log_dir, dt)
         tb = program.TensorBoard()
-        tb.configure(argv=[None, '--logdir', log_dir, '--port', log_port, '--bind_all'])
+        tb.configure(argv=[None, '--logdir', log_dir, '--port', str(log_port), '--bind_all'])
         url = tb.launch()
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
         tb_writer = SummaryWriter(log_dir=log_dir)
