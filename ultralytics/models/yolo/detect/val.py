@@ -150,7 +150,7 @@ class SequenceValidator():
         :param meas:
         :return:
         '''
-        for key in meas.keys:
+        for key in meas.keys():
             self.metrics[key] = meas[key]
 
     def update_metrics(self, new_meas, idx):
@@ -160,7 +160,7 @@ class SequenceValidator():
         :param idx:
         :return:
         '''
-        for key in new_meas.keys:
+        for key in new_meas.keys():
             if key in self.metrics and new_meas[key] >= 0:
                 self.metrics[key] = ((self.metrics[key] * idx) + new_meas[key])/(idx+1)
 
