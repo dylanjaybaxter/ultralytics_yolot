@@ -126,11 +126,11 @@ def main_func(args):
             print(f"Continuing Run: {run_name}")
             if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
                 model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
-                log_dir = os.path.join(metrics_save_path, run_name, "tb")
                 model_save_path = model_load_path
                 print("Using previous checkpoint...")
             else:
                 print("Starting model from scratch")
+            log_dir = os.path.join(metrics_save_path, run_name, "tb")
         else:
             # Create new file structure
             print(f"Creating new run: {run_name}")
