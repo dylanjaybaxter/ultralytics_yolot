@@ -115,7 +115,7 @@ class SequenceValidator():
 
                 # Update Progress Bar
                 if self.global_rank == 0 or (idx+1) == num_seq:
-                    pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {running_averages['map_50']:.2e}")
+                    pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {self.metrics['map_50']:.2e}")
                     pbar.refresh()
 
             self.map_op.reset()
