@@ -215,7 +215,7 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    validator = SequenceValidator(dataloader=val_loader, device='cpu')
+    validator = SequenceValidator(dataloader=val_loader, device=device)
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
@@ -298,8 +298,8 @@ def main_func(args):
         model.eval()
         metrics = validator.validate(model)
         if global_rank == 0:
-            tb_writer.add_scalar('mAP',metrics['map'], epoch)
-            tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
+            tb_writer.add_scalar('mAP_50',metrics['map_50'], epoch)
+            #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
 
         # Detach tensors
         scheduler.step()

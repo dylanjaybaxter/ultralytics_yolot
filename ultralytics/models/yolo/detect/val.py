@@ -33,6 +33,7 @@ class SequenceValidator():
         self.map_op = MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25,0.5,0.75,0.95],
                                            class_metrics=False, extended_summary=False).to(device)
         self.global_rank = int(os.environ["RANK"])
+        self.local_rank = int(os.environ["LOCAL_RANK"])
 
     def validate(self, model):
         with torch.no_grad():
@@ -105,15 +106,17 @@ class SequenceValidator():
                 seq_mAP = self.map_op(target=targets, preds=preds)
 
                 # Calculate Running Averages
-                running_averages['map_50'] = ((running_averages['map_50'] * idx) + seq_mAP['map_50'])/(idx+1)
+                if seq_mAP['map_50'] >= 0:
+                    running_averages['map_50'] = ((running_averages['map_50'] * idx) + seq_mAP['map_50'])/(idx+1)
 
                 # Reset Targets and Predictions and hopefully free tensors
                 targets = None
                 preds = None
 
                 # Update Progress Bar
-                pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {running_averages['map_50']:.2e}")
-                pbar.refresh()
+                if self.global_rank == 0 or (idx+1) == num_seq:
+                    pbar.set_description(f"Seq:{idx+1}/{num_seq} | Acc: {seq_mAP['map_50']:.2e}, Running: {running_averages['map_50']:.2e}")
+                    pbar.refresh()
 
             # Compute Total Metrics and reset internal state of the metric module
             epoch_results = running_averages
