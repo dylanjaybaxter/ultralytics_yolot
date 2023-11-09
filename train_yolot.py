@@ -194,9 +194,7 @@ def main_func(args):
 
     print(f"Building parallel model with device: {torch.device(device)}")
     #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    dist.barrier()
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
-    dist.barrier()
     print("model built")
 
     # Define Optimizer and Scheduler
@@ -234,8 +232,6 @@ def main_func(args):
 
 
     for epoch in range(starting_epoch,epochs+1):
-        # Sync at the beginning of each epoch
-        dist.barrier()
         # Make sure model is in training mode
         model.train()
         model.module.model_to(device)
