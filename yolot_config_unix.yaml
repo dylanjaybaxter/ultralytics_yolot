@@ -6,7 +6,7 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 
 # YOLOT Training Script settings
 gpu_workers: 1
-DEBUG: False
+DEBUG: True
 run_name: "test"
 load_name: "test"
 met_save_path: "/workspace/results/"
@@ -19,6 +19,7 @@ prof: False
 lr0: 0.1  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 log_dir: "/workspace/results/tensor_board/"
 log_port: 6006
+seq_cap: 10
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: "yolov8Tn.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml

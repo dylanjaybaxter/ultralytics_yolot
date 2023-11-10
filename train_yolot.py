@@ -100,9 +100,9 @@ def main_func(args):
         epochs = conf['epochs']
         dataset_path = conf['data']
         workers = conf['workers']
-        model_save_path = conf['model_save_path']
+        #model_save_path = conf['model_save_path']
         metrics_save_path = conf['met_save_path']
-        model_load_path = conf['pt_load_path']
+        #model_load_path = conf['pt_load_path']
         visualize = conf['visualize']
         sequence_len = conf['seq_len']
         cls_gain = conf['cls']
@@ -114,6 +114,7 @@ def main_func(args):
         log_dir = conf['log_dir']
         log_port = conf['log_port']
         run_name = conf['run_name']
+        seq_cap = conf['seq_cap']
 
 
     if global_rank == 0:
@@ -127,10 +128,10 @@ def main_func(args):
             print(f"Continuing Run: {run_name}")
             if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
                 model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
-                model_save_path = model_load_path
                 print("Using previous checkpoint...")
             else:
                 print("Starting model from scratch")
+            model_save_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
             log_dir = os.path.join(metrics_save_path, run_name, "tb")
         else:
             # Create new file structure
@@ -279,6 +280,10 @@ def main_func(args):
                 pbar.set_description(f"Seq:{seq_idx+1}/{num_seq}, Loss:{loss:.10e}, lr: {optimizer.param_groups[0]['lr']:.5e}:")
                 tb_writer.add_scalar('Loss', loss, (epoch-1)*len(train_loader)+seq_idx)
                 pbar.refresh()
+
+            # Exit early for debug
+            if DEBUG and seq_idx >= seq_cap:
+                break
         # Save Checkpoint
         if global_rank == 0:
             metadata = {
