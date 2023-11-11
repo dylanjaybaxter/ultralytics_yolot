@@ -255,7 +255,7 @@ def main_func(args):
         save_counter = 0
         for seq_idx, subsequence in enumerate(pbar):
             # Skip iterations if checkpoint
-            if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping:
+            if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping and ckpt['metadata']['iteration'] < num_seq-10:
                 pbar.set_description(
                     f"Seq:{seq_idx + 1}/{num_seq}, Skipping to idx{ckpt['metadata']['iteration']}:")
                 pbar.refresh()
@@ -301,7 +301,7 @@ def main_func(args):
         if global_rank == 0:
             print(f"Saving checkpoint to {os.path.join(model_save_path, model_save_name)}")
             save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                            epoch, seq_idx, loss, model_save_path, model_save_name)
+                            epoch, 0, loss, model_save_path, model_save_name)
 
         # Validate
         model.eval()
@@ -314,7 +314,7 @@ def main_func(args):
         if metrics['mAP_50'] >= best_metric:
             print(f"Saving new best to {model_save_path}")
             save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                            epoch, seq_idx, loss, model_save_path, "best.pth")
+                            epoch, 0, loss, model_save_path, "best.pth")
 
         # Detach tensors
         scheduler.step()
