@@ -115,6 +115,7 @@ def main_func(args):
         log_port = conf['log_port']
         run_name = conf['run_name']
         seq_cap = conf['seq_cap']
+        save_freq = conf['save_freq']
 
 
     if global_rank == 0:
@@ -131,7 +132,8 @@ def main_func(args):
                 print("Using previous checkpoint...")
             else:
                 print("Starting model from scratch")
-            model_save_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
+            model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+            model_save_name = "checkpoint.pth"
             log_dir = os.path.join(metrics_save_path, run_name, "tb")
         else:
             # Create new file structure
@@ -140,6 +142,7 @@ def main_func(args):
             os.mkdir(os.path.join(metrics_save_path, run_name, "weights"))
             model_load_path = ""
             model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+            model_save_name = "checkpoint.pth"
             os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
             log_dir = os.path.join(metrics_save_path, run_name, "tb")
             os.mkdir(os.path.join(metrics_save_path, run_name, "other"))
@@ -226,6 +229,7 @@ def main_func(args):
     # Main Training Loop
     model.train()
     best_state = model.module.state_dict()
+    best_metric = 0
     loss = 0 # Arbitrary Starting Loss for Display
     if ckpt:
         starting_epoch = ckpt['metadata']['epoch']
@@ -249,6 +253,7 @@ def main_func(args):
         num_seq = len(train_loader)
 
         # Single Epoch Training Loop
+        save_counter = 0
         for seq_idx, subsequence in enumerate(pbar):
             # Skip iterations if checkpoint
             if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping:
@@ -281,22 +286,20 @@ def main_func(args):
                 tb_writer.add_scalar('Loss', loss, (epoch-1)*len(train_loader)+seq_idx)
                 pbar.refresh()
 
+            # Save checkpoint periodically
+            if global_rank == 0 and save_counter > save_freq:
+                save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                                epoch, seq_idx, loss, model_save_path, model_save_name)
+
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
                 break
+
         # Save Checkpoint
         if global_rank == 0:
-            metadata = {
-                'epoch': epoch,
-                'iteration': seq_idx,
-                'loss': loss,
-            }
-            save_obj = {
-                'model': model.module.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'metadata':metadata,
-            }
-            torch.save(save_obj,model_save_path)
+            print(f"Saving checkpoint to {os.path.join(model_save_path, model_save_name)}")
+            save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                            epoch, seq_idx, loss, model_save_path, model_save_name)
 
         # Validate
         model.eval()
@@ -304,6 +307,12 @@ def main_func(args):
         if global_rank == 0:
             tb_writer.add_scalar('mAP_50',metrics['map_50'], epoch)
             #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
+
+        # Save Best
+        if metrics['mAP_50'] >= best_metric:
+            print(f"Saving new best to {model_save_path}")
+            save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                            epoch, seq_idx, loss, model_save_path, "best.pth")
 
         # Detach tensors
         scheduler.step()
@@ -365,6 +374,19 @@ def print_cuda_info():
     print(torch.__version__)
     print(torch.cuda.nccl.is_available(torch.randn(1).cuda()))
     print(torch.cuda.nccl.version())
+
+def save_checkpoint(model_dict, opt_dict, epoch, itr, loss, save_path, save_name):
+    metadata = {
+        'epoch': epoch,
+        'iteration': itr,
+        'loss': loss,
+    }
+    save_obj = {
+        'model': model_dict,
+        'optimizer': opt_dict,
+        'metadata': metadata,
+    }
+    torch.save(save_obj, os.path.join(save_path, save_name))
 
 
 ''' Main Script'''
