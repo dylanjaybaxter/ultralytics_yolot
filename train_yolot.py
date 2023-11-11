@@ -119,7 +119,6 @@ def main_func(args):
 
 
     if global_rank == 0:
-
         # Create File structure for the run
         # Read list of existing runs
         dirs = os.listdir(metrics_save_path)
@@ -287,9 +286,9 @@ def main_func(args):
                 pbar.refresh()
 
             # Save checkpoint periodically
-            if global_rank == 0 and save_counter > save_freq:
-                save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                                epoch, seq_idx, loss, model_save_path, model_save_name)
+            #if global_rank == 0 and save_counter > save_freq:
+                #save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                #                epoch, seq_idx, loss, model_save_path, model_save_name)
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
