@@ -256,6 +256,9 @@ def main_func(args):
         for seq_idx, subsequence in enumerate(pbar):
             # Skip iterations if checkpoint
             if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping:
+                pbar.set_description(
+                    f"Seq:{seq_idx + 1}/{num_seq}, Skipping to idx{ckpt['metadata']['iteration']}:")
+                pbar.refresh()
                 continue
             else:
                 skipping = False
@@ -286,9 +289,9 @@ def main_func(args):
                 pbar.refresh()
 
             # Save checkpoint periodically
-            #if global_rank == 0 and save_counter > save_freq:
-                #save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                #                epoch, seq_idx, loss, model_save_path, model_save_name)
+            if global_rank == 0 and save_counter > save_freq:
+                save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                                epoch, seq_idx, loss, model_save_path, model_save_name)
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
