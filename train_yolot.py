@@ -311,7 +311,7 @@ def main_func(args):
             #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
 
         # Save Best
-        if metrics['mAP_50'] >= best_metric:
+        if metrics['map_50'] >= best_metric:
             print(f"Saving new best to {model_save_path}")
             save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                             epoch, 0, loss, model_save_path, "best.pth")
