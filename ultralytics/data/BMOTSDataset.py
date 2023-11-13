@@ -166,7 +166,6 @@ class BMOTSDataset(Dataset):
                 cx = x1 + abs(x1 - x2) / 2
                 cy = y1 + abs(y1 - y2) / 2
 
-
                 # Append extracted data to a list
                 cls_ids.append(torch.tensor(cat_id))
                 if not all( i <= 1 for i in  [cx/im_w,cy/im_h,w/im_w,h/im_h]):
