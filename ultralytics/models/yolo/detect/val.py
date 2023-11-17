@@ -15,7 +15,7 @@ from ultralytics.utils.metrics import ConfusionMatrix, DetMetrics, box_iou
 from ultralytics.utils.ops import non_max_suppression
 from ultralytics.utils.plotting import output_to_target, plot_images
 from ultralytics.utils.torch_utils import de_parallel
-from torchmetrics.detection import IntersectionOverUnion, MeanAveragePrecision
+from torchmetrics.detection import MeanAveragePrecision
 
 # Added
 from torch.cuda.amp import autocast

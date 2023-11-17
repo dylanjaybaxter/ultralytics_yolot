@@ -3,41 +3,18 @@ This is a script intended for training YOLOT: A modified recurrent variant of YO
 Author: Dylan Baxter
 Created: 8/7/23
 '''
-import cv2
-import torch
-from torch.cuda import amp
-import os
 import yaml
-import multiprocessing
 
 ''' Imports '''
 # Standard Library
 import argparse
-from pathlib import Path
 # Package Imports
 # Local Imports
-from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
-from ultralytics.nn.tasks import parse_model, yaml_model_load
-from torch.utils.data import DataLoader
-from ultralytics.nn.tasks import DetectionModel
-from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.models.yolo.detect.train import DetectionTrainer
-from ultralytics.models.yolo.detect.val import DetectionValidator
-from ultralytics.cfg import ROOT
-from ultralytics.nn.SequenceModel import SequenceModel
-import torch.optim as opt
-from tqdm import tqdm
-from ultralytics.utils.ops import non_max_suppression
-from torchvision.transforms.functional import resize
-from torch.cuda.amp import autocast, GradScaler
 
 # Parallelization
-from torch.utils.data.distributed import DistributedSampler
-import torch.distributed as dist
 
 # Profiling
-import cProfile
-import pstats
 
 
 ''' Arguments '''

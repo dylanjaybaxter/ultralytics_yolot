@@ -7,37 +7,26 @@ import datetime
 
 import cv2
 import torch
-from torch.cuda import amp
 import os
 import yaml
-import multiprocessing
 
 ''' Imports '''
 # Standard Library
 import argparse
-from pathlib import Path
 # Package Imports
 # Local Imports
-from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
-from ultralytics.nn.tasks import parse_model, yaml_model_load
-from torch.utils.data import DataLoader
-from ultralytics.nn.tasks import DetectionModel
-from ultralytics.utils.loss import v8DetectionLoss
-from ultralytics.models.yolo.detect.train import DetectionTrainer
-from ultralytics.models.yolo.detect.val import SequenceValidator
-from ultralytics.cfg import ROOT
-from ultralytics.nn.SequenceModel import SequenceModel
+from yolot.BMOTSDataset import BMOTSDataset, collate_fn
+from yolot.YOLOT_Validator import SequenceValidator
+from yolot.SequenceModel import SequenceModel
 import torch.optim as opt
 from tqdm import tqdm
 from ultralytics.utils.ops import non_max_suppression
-from torchvision.transforms.functional import resize
 from torch.cuda.amp import autocast, GradScaler
 
 # Parallelization
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.multiprocessing as mp
 from ultralytics.data.build import InfiniteDataLoader
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -46,8 +35,6 @@ from tensorboard import program
 from torch.utils.tensorboard import SummaryWriter
 
 # Profiling
-import cProfile
-import pstats
 
 ''' Arguments '''
 # Defaults
@@ -154,8 +141,6 @@ def main_func(args):
         url = tb.launch()
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
         tb_writer = SummaryWriter(log_dir=log_dir)
-
-
 
     # Setup Device
     print_cuda_info()
