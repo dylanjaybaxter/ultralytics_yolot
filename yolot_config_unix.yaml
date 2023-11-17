@@ -21,6 +21,9 @@ log_dir: "/workspace/results/tensor_board/"
 log_port: 6006
 seq_cap: 10
 save_freq: 1000
+box: 5.5  # (float) box loss gain
+cls: 0.25  # (float) cls loss gain (scale with pixels)
+dfl: 1.0  # (float) dfl loss gain
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: "yolov8Tn.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
@@ -105,9 +108,7 @@ weight_decay: 0.0005  # (float) optimizer weight decay 5e-4
 warmup_epochs: 3.0  # (float) warmup epochs (fractions ok)
 warmup_momentum: 0.8  # (float) warmup initial momentum
 warmup_bias_lr: 0.1  # (float) warmup initial bias lr
-box: 7.5  # (float) box loss gain
-cls: 0.5  # (float) cls loss gain (scale with pixels)
-dfl: 1.5  # (float) dfl loss gain
+
 pose: 12.0  # (float) pose loss gain
 kobj: 1.0  # (float) keypoint obj loss gain
 label_smoothing: 0.0  # (float) label smoothing (fraction)
