@@ -117,7 +117,7 @@ class BMOTSDataset(Dataset):
         for filename in frame_files:
             if filename.endswith(".jpg"):
                 im_paths.append(filename)
-                im = read_image(path.join(video_path, filename)).half()
+                im = read_image(path.join(video_path, filename))/255.0
                 # Apply Transforms
                 if self.transform:
                     im = self.transform(im)
