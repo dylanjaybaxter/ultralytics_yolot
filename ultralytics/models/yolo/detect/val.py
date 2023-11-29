@@ -15,7 +15,7 @@ from ultralytics.utils.metrics import ConfusionMatrix, DetMetrics, box_iou
 from ultralytics.utils.ops import non_max_suppression
 from ultralytics.utils.plotting import output_to_target, plot_images
 from ultralytics.utils.torch_utils import de_parallel
-from torchmetrics.detection import IntersectionOverUnion, MeanAveragePrecision
+from torchmetrics.detection import MeanAveragePrecision
 
 # Added
 from torch.cuda.amp import autocast
@@ -28,8 +28,7 @@ class SequenceValidator():
         self.conf_thres = conf_thres
         self.class_dict = class_dict
         self.device = device
-        self.iou_op = IntersectionOverUnion(box_format='xyxy', iou_threshold=iou_thres,
-                                            class_metrics=True, respect_labels=True).to(device)
+        self.iou_op = None
         self.map_op = MeanAveragePrecision(box_format='xyxy', iou_type='bbox', iou_thresholds=[0.25,0.5,0.75,0.95],
                                            class_metrics=False, extended_summary=False).to(device)
         self.global_rank = int(os.environ["RANK"])

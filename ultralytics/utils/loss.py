@@ -171,7 +171,7 @@ class v8DetectionLoss:
         targets = torch.cat((batch['batch_idx'].view(-1, 1), batch['cls'].view(-1, 1), batch['bboxes']), 1)
         targets = self.preprocess(targets.to(self.device), batch_size, scale_tensor=imgsz[[1, 0, 1, 0]])
         gt_labels, gt_bboxes = targets.split((1, 4), 2)  # cls, xyxy
-        mask_gt = gt_bboxes.sum(2, keepdim=True).gt_(0)
+        mask_gt = gt_bboxes.sum(2, keepdim=True).gt_(0) # Mask frames with detections
 
         # pboxes
         pred_bboxes = self.bbox_decode(anchor_points, pred_distri)  # xyxy, (b, h*w, 4)
@@ -185,6 +185,8 @@ class v8DetectionLoss:
         # cls loss
         # loss[1] = self.varifocal_loss(pred_scores, target_scores, target_labels) / target_scores_sum  # VFL way
         loss[1] = self.bce(pred_scores, target_scores.to(dtype)).sum() / target_scores_sum  # BCE
+        print(pred_scores)
+        print(target_scores)
 
         # bbox loss
         if fg_mask.sum():
@@ -196,7 +198,7 @@ class v8DetectionLoss:
         loss[1] *= self.hyp.cls  # cls gain
         loss[2] *= self.hyp.dfl  # dfl gain
 
-        return loss.sum() * batch_size, loss.detach()  # loss(box, cls, dfl)
+        return loss.sum() / batch_size, loss.detach()  # loss(box, cls, dfl)
 
 
 # Criterion class for computing training losses
