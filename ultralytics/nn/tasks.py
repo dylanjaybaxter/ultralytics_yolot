@@ -723,9 +723,8 @@ def parse_model(d, ch, verbose=True, batch=1):  # model_dict, input_channels(3)
         elif m is AddRnn:
             c2 = ch[f]
         elif m is RConv:
-            c1 = ch[f]
-            c2 = args[0]
-            args = [c1, c2, args[1], args[2]]
+            args[0] = ch[f]
+            c2 = ch[f]
         else:
             c2 = ch[f]
 

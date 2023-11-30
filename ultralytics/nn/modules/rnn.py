@@ -60,10 +60,10 @@ class AddRnn(nn.Module):
 class RConv(nn.Module):
     default_act = nn.SiLU
 
-    def __init__(self, c1, c2, hidden_size, k, batch_size=1, device='cpu'):
+    def __init__(self, ch, hidden_size, k, batch_size=1, device='cpu'):
         super().__init__()
-        self.hidden_size = [batch_size, int(c1/4), int(c2/4), hidden_size]
-        self.conv = Conv(c1, c2, k=k, s=2)
+        self.hidden_size = [batch_size, ch, hidden_size, hidden_size]
+        self.conv = Conv(ch, ch, k=k, s=2)
         self.hidden_states = []
         self.device = device
         for i in range(3):
@@ -73,7 +73,7 @@ class RConv(nn.Module):
     def forward(self, x):
         # Pass input through convolutional layer
         x_conv = self.conv(x)
-        x_compressed = tfunc.resize(x_conv, self.hidden_size[1:3])
+        x_compressed = tfunc.resize(x_conv, self.hidden_size[3:])
         # Create Output Tensor
         expanded = self.expand_tensors(self.hidden_states, x_conv.shape)
         y = torch.cat(expanded+[x_conv], dim=3)
