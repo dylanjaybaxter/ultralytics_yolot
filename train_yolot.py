@@ -267,7 +267,7 @@ def main_func(args):
             # Reset and detach hidden states
             model.module.zero_states()
             # Forward Pass
-            with autocast(enabled=True):
+            with autocast(enabled=False):
                 outputs = model(subsequence[0]['img'].to(device))
                 # Compute Loss
                 loss = model.module.sequence_loss(outputs, subsequence[0])
