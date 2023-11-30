@@ -207,6 +207,8 @@ def main_func(args):
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
     if ckpt:
         optimizer.load_state_dict(ckpt['optimizer'])
+        for group in optimizer.param_groups:
+            group['lr'] = lr0
     lam1 = lambda epoch: (0.9 ** epoch)
     scheduler = LambdaLR(optimizer, lr_lambda=[lam1])
 
