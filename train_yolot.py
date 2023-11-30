@@ -264,8 +264,6 @@ def main_func(args):
                 skipping = False
             # Reset and detach hidden states
             model.module.zero_states()
-            # Zero Out Leftover Gradients
-            optimizer.zero_grad()
             # Forward Pass
             with autocast(enabled=True):
                 outputs = model(subsequence[0]['img'].to(device))
@@ -276,6 +274,8 @@ def main_func(args):
             if visualize:
                 display_predictions(subsequence[0], outputs, 16)
 
+            # Zero Out Leftover Gradients
+            optimizer.zero_grad()
             # Compute New Gradients
             scaler.scale(loss).backward()
             # Update weights
