@@ -277,7 +277,7 @@ def main_func(args):
                 display_predictions(subsequence[0], outputs, 16)
 
             # Compute New Gradients
-            scaler.scale(torch.sqrt(loss)).backward()
+            scaler.scale(loss).backward()
             # Update weights
             scaler.step(optimizer)
             scaler.update()

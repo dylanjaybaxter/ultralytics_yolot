@@ -185,8 +185,6 @@ class v8DetectionLoss:
         # cls loss
         # loss[1] = self.varifocal_loss(pred_scores, target_scores, target_labels) / target_scores_sum  # VFL way
         loss[1] = self.bce(pred_scores, target_scores.to(dtype)).sum() / target_scores_sum  # BCE
-        print(pred_scores)
-        print(target_scores)
 
         # bbox loss
         if fg_mask.sum():
