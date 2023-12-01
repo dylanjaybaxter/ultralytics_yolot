@@ -293,7 +293,10 @@ def main_func(args):
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
                 save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                                epoch, seq_idx, loss, model_save_path, model_save_name)
+                                epoch, seq_idx, loss, model_save_path, "mini_check.pt")
+                save_counter = 0
+            else:
+                save_counter+=1
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
@@ -313,7 +316,7 @@ def main_func(args):
             #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
 
         # Save Best
-        if metrics['map_50'] >= best_metric:
+        if metrics['map_50'] >= best_metric and global_rank==0:
             print(f"Saving new best to {model_save_path}")
             save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                             epoch, 0, loss, model_save_path, "best.pth")
