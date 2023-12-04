@@ -16,14 +16,14 @@ pt_load_path: ""
 seq_len: 6
 visualize: False
 prof: False
-lr0: 0.001  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
+lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 log_dir: "/workspace/results/tensor_board/"
 log_port: 6006
 seq_cap: 10
 save_freq: 1000
-box: 5.5  # (float) box loss gain
-cls: 0.25  # (float) cls loss gain (scale with pixels)
-dfl: 1.0  # (float) dfl loss gain
+box: 7.5  # (float) box loss gain
+cls: 0.5  # (float) cls loss gain (scale with pixels)
+dfl: 1.5  # (float) dfl loss gain
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: "yolov8Tn.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
