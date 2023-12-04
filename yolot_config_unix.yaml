@@ -16,7 +16,7 @@ pt_load_path: ""
 seq_len: 6
 visualize: False
 prof: False
-lr0: 0.001  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
+lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 log_dir: "/workspace/results/tensor_board/"
 log_port: 6006
 seq_cap: 10
