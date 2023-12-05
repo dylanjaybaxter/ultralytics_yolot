@@ -6,6 +6,7 @@
 '''
 
 # Imports
+import numpy as np
 import torch
 import cv2
 import argparse
@@ -17,10 +18,11 @@ from tqdm import tqdm
 from ultralytics.data.build import InfiniteDataLoader
 from ultralytics.nn.SequenceModel import SequenceModel
 from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn
+from ultralytics.utils.ops import non_max_suppression
 
 
 # Defaults and Macros
-default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\good_1epoch.pth"
+default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\epoch10.pt"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
 default_vid_path = "val_test"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
@@ -49,12 +51,15 @@ def main_func(args):
 
 
     # Build Model
-    model = SequenceModel(cfg="yolo8Tn.yaml", device=0)
+    model = SequenceModel(cfg="yolov8Tn.yaml", device=0)
+    model.eval()
     # Save Weights
-    model.load_state_dict(torch.load(model_path).state_dict())
+    model.load_state_dict(torch.load(model_path)['model'])
+    model.model_to(0)
 
     # Set up val dataloader
-    val_dataset = BMOTSDataset(data_path, "val", device=device, seq_len=24)
+    print("Building Dataset...")
+    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=24)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=1, shuffle=False,
                             collate_fn=collate_fn, drop_last=False, pin_memory=False)
 
@@ -62,7 +67,7 @@ def main_func(args):
 
     # Setup Video Writer
     if save_path:
-        writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), FRAME_RATE, im.size)
+        writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), FRAME_RATE, sample_data['img'].shape[:-2])
 
     # Compile
     acc = 0
@@ -74,10 +79,39 @@ def main_func(args):
 
     # Single Epoch Training Loop
     save_counter = 0
+    total_detections = 0
     for seq_idx, subsequence in enumerate(pbar):
 
+        sub_ims = subsequence[0]['img']
+        with torch.no_grad():
+            outputs = model(sub_ims)
 
+        for frame_idx in range(sub_ims.shape[0]):
+            # Preprocess Frame for OpenCV
+            frame = sub_ims[frame_idx,:,:,:].cpu().numpy()
+            frame = (np.transpose(frame, (1,2,0))*255).astype(np.uint8)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
+            # Process Detections
+            raw_dets = outputs[frame_idx][0]
+            # NMS
+            dets = non_max_suppression(raw_dets, conf_thres=0.0001, iou_thres=0.5)
+            print(f"Sequence {seq_idx}, Frame {frame_idx}: {dets[0].shape[0]} detections, {total_detections} total detections")
+            for det_idx in range(dets[0].shape[0]):
+                conf = dets[0][det_idx,4]
+                cls = dets[0][det_idx, 5]
+                x1 = int(dets[0][det_idx,0])
+                y1 = int(dets[0][det_idx,1])
+                w = int(dets[0][det_idx,2])
+                h = int(dets[0][det_idx,3])
+                x2 = x1+w
+                y2 = y1+h
+                cv2.rectangle(frame,(x1,y1,x2,y2), (0,255,0))
+                total_detections += 1
+
+            # Show Image
+            cv2.imshow("Predictions", frame)
+            cv2.waitKey(10)
 
     print("Inference Complete!")
 
