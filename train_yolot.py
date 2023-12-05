@@ -207,6 +207,8 @@ def main_func(args):
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
     if ckpt:
         optimizer.load_state_dict(ckpt['optimizer'])
+        for group in optimizer.param_groups:
+            group['lr'] = lr0
     lam1 = lambda epoch: (0.9 ** epoch)
     scheduler = LambdaLR(optimizer, lr_lambda=[lam1])
 
@@ -264,10 +266,8 @@ def main_func(args):
                 skipping = False
             # Reset and detach hidden states
             model.module.zero_states()
-            # Zero Out Leftover Gradients
-            optimizer.zero_grad()
             # Forward Pass
-            with autocast(enabled=True):
+            with autocast(enabled=False):
                 outputs = model(subsequence[0]['img'].to(device))
                 # Compute Loss
                 loss = model.module.sequence_loss(outputs, subsequence[0])
@@ -276,8 +276,10 @@ def main_func(args):
             if visualize:
                 display_predictions(subsequence[0], outputs, 16)
 
+            # Zero Out Leftover Gradients
+            optimizer.zero_grad()
             # Compute New Gradients
-            scaler.scale(loss*.001).backward()
+            scaler.scale(loss).backward()
             # Update weights
             scaler.step(optimizer)
             scaler.update()
@@ -291,7 +293,10 @@ def main_func(args):
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
                 save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                                epoch, seq_idx, loss, model_save_path, model_save_name)
+                                epoch, seq_idx, loss, model_save_path, "mini_check.pt")
+                save_counter = 0
+            else:
+                save_counter+=1
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
@@ -311,7 +316,7 @@ def main_func(args):
             #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
 
         # Save Best
-        if metrics['map_50'] >= best_metric:
+        if metrics['map_50'] >= best_metric and global_rank==0:
             print(f"Saving new best to {model_save_path}")
             save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                             epoch, 0, loss, model_save_path, "best.pth")

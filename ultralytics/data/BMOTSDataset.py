@@ -8,6 +8,7 @@ from os import path
 from PIL import Image
 from torchvision.transforms import ToTensor, Resize
 import random
+from torchvision.io import read_image
 
 class_dict = {
     "pedestrian": 0,
@@ -108,7 +109,6 @@ class BMOTSDataset(Dataset):
         cls_ids = []
         frame_ids = []
         ratio_pads = []
-        ttensor = ToTensor()
 
         # Get frames
         video_path = path.join(self.video_dir, seq_id)
@@ -117,7 +117,7 @@ class BMOTSDataset(Dataset):
         for filename in frame_files:
             if filename.endswith(".jpg"):
                 im_paths.append(filename)
-                im = ttensor(Image.open(path.join(video_path, filename)))
+                im = read_image(path.join(video_path, filename))/255.0
                 # Apply Transforms
                 if self.transform:
                     im = self.transform(im)
@@ -165,7 +165,6 @@ class BMOTSDataset(Dataset):
                 h = abs(y2 - y1)
                 cx = x1 + abs(x1 - x2) / 2
                 cy = y1 + abs(y1 - y2) / 2
-
 
                 # Append extracted data to a list
                 cls_ids.append(torch.tensor(cat_id))
