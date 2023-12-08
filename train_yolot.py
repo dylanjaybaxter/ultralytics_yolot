@@ -24,7 +24,7 @@ from torch.utils.data import DataLoader
 from ultralytics.nn.tasks import DetectionModel
 from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.models.yolo.detect.train import DetectionTrainer
-from ultralytics.models.yolo.detect.val import SequenceValidator
+from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
 from ultralytics.cfg import ROOT
 from ultralytics.nn.SequenceModel import SequenceModel
 import torch.optim as opt
@@ -221,16 +221,16 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    validator = SequenceValidator(dataloader=val_loader, device='cpu')
+    validator = SequenceValidator2(dataloader=val_loader)
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
-    #validator.validate(model)
+    validator.validate(model=model)
 
     # Main Training Loop
     model.train()
     best_state = model.module.state_dict()
-    best_metric = 0
+    best_metric = 100000000
     loss = 0 # Arbitrary Starting Loss for Display
     if ckpt:
         starting_epoch = ckpt['metadata']['epoch']
@@ -296,7 +296,7 @@ def main_func(args):
                                 epoch, seq_idx, loss, model_save_path, "mini_check.pt")
                 save_counter = 0
             else:
-                save_counter+=1
+                save_counter += 1
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
@@ -310,13 +310,15 @@ def main_func(args):
 
         # Validate
         model.eval()
-        metrics = validator.validate(model)
+        metrics = validator(model=model)
         if global_rank == 0:
-            tb_writer.add_scalar('mAP_50',metrics['map_50'], epoch)
-            #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
+            tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
+            tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
+            tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
+            tb_writer.add_scalar('metrics/recall(B)', metrics['metrics/recall(B)'], epoch)
 
         # Save Best
-        if metrics['map_50'] >= best_metric and global_rank==0:
+        if metrics['fitness'] >= best_metric and global_rank==0:
             print(f"Saving new best to {model_save_path}")
             save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                             epoch, 0, loss, model_save_path, "best.pth")

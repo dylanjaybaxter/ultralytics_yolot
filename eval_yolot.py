@@ -17,12 +17,13 @@ from tqdm import tqdm
 
 from ultralytics.data.build import InfiniteDataLoader
 from ultralytics.nn.SequenceModel import SequenceModel
-from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn
+from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
 from ultralytics.utils.ops import non_max_suppression
+from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
 
 
 # Defaults and Macros
-default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\epoch10.pt"
+default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\epoch15.pt"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
 default_vid_path = "val_test"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
@@ -61,9 +62,14 @@ def main_func(args):
     print("Building Dataset...")
     val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=24)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=1, shuffle=False,
-                            collate_fn=collate_fn, drop_last=False, pin_memory=False)
+                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
 
     sample_data = val_dataset[0]
+
+    # Create Validator
+    #validator = SequenceValidator(val_loader, iou_thres=0.4, conf_thres=0.25, device=0, ddp=False)
+    validator = SequenceValidator2(dataloader=val_loader)
+    stats = validator(model=model)
 
     # Setup Video Writer
     if save_path:
@@ -82,7 +88,7 @@ def main_func(args):
     total_detections = 0
     for seq_idx, subsequence in enumerate(pbar):
 
-        sub_ims = subsequence[0]['img']
+        sub_ims = subsequence['img']
         with torch.no_grad():
             outputs = model(sub_ims)
 
