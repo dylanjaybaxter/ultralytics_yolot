@@ -236,6 +236,7 @@ def main_func(args):
     validator = SequenceValidator2(dataloader=val_loader)
     validator.dataloader.sampler.set_epoch(0)
     mini_validator = SequenceValidator2(dataloader=mini_val_loader)
+    mini_validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
     if global_rank == 0:
