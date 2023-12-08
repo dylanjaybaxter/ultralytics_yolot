@@ -203,7 +203,7 @@ def main_func(args):
     elif os.path.exists(model_load_path) and not continuing:
         print(f"Loading model from {model_load_path}")
         ckpt = torch.load(model_load_path)
-        model.load_state_dict(ckpt.state_dict())
+        model.load_state_dict(ckpt)
 
     print(f"Building parallel model with device: {torch.device(device)}")
     #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)

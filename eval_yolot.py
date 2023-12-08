@@ -23,7 +23,7 @@ from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValida
 
 
 # Defaults and Macros
-default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\epoch15.pt"
+default_model_path = "yolot_pretrained.pt"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
 default_vid_path = "val_test"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
@@ -55,7 +55,7 @@ def main_func(args):
     model = SequenceModel(cfg="yolov8Tn.yaml", device=0)
     model.eval()
     # Save Weights
-    model.load_state_dict(torch.load(model_path)['model'])
+    model.load_state_dict(torch.load(model_path))
     model.model_to(0)
 
     # Set up val dataloader
