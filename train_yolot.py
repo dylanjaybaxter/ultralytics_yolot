@@ -236,7 +236,8 @@ def main_func(args):
     validator = SequenceValidator2(dataloader=val_loader)
     validator.dataloader.sampler.set_epoch(0)
     mini_validator = SequenceValidator2(dataloader=mini_val_loader)
-    mini_validator.dataloader.sampler.set_epoch(0)
+    mini_epoch = 0
+    mini_validator.dataloader.sampler.set_epoch(mini_epoch)
     model.eval()
     model.module.zero_states()
     if global_rank == 0:
@@ -245,7 +246,6 @@ def main_func(args):
 
     # Main Training Loop
     model.train()
-    best_state = model.module.state_dict()
     best_metric = 100000000
     loss = 0 # Arbitrary Starting Loss for Display
     if ckpt and continuing:
@@ -255,7 +255,7 @@ def main_func(args):
         starting_epoch = 1
         skipping = False
 
-
+    dist.barrier()
     for epoch in range(starting_epoch,epochs+1):
         # Make sure model is in training mode
         model.train()
@@ -308,6 +308,8 @@ def main_func(args):
 
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
+                mini_validator.sampler.set_epoch(mini_epoch)
+                mini_epoch += 1
                 mini_metrics = mini_validator(model=model)
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
