@@ -407,6 +407,7 @@ def init_distributed():
     # Initialize Parallelization
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     os.environ['OMP_NUM_THREADS'] = "2"
+    torch.multiprocessing.set_sharing_strategy("file_system")
     dist.init_process_group(backend="gloo")
 
 def print_cuda_info():
