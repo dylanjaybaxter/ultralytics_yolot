@@ -241,7 +241,9 @@ def main_func(args):
     #model.eval()
     model.module.zero_states()
     if global_rank == 0:
+        old_val = model.module.copy()
         mini_validator(model=model.module)
+        compare_objects(old_val, model.module)
     model.module.zero_states()
     model.module.model_to(device)
     #dist.barrier()
@@ -419,6 +421,46 @@ def save_checkpoint(model_dict, opt_dict, epoch, itr, loss, save_path, save_name
         'metadata': metadata,
     }
     torch.save(save_obj, os.path.join(save_path, save_name))
+
+def compare_objects(obj1, obj2, attribute_name=''):
+    """
+    Recursively compare values of attributes in two objects and display the names of any that are not equal.
+
+    Parameters:
+    - obj1: The first object
+    - obj2: The second object
+    - attribute_name: The current attribute name in the recursive call (used for tracking nested attributes)
+    """
+    if type(obj1) != type(obj2):
+        print(f"Different types for attribute '{attribute_name}': {type(obj1)} vs {type(obj2)}")
+        return
+
+    if isinstance(obj1, (int, float, str, bool, type(None))):
+        # Compare basic types
+        if obj1 != obj2:
+            print(f"Difference in attribute '{attribute_name}': {obj1} vs {obj2}")
+
+    elif isinstance(obj1, list):
+        # Compare lists element-wise
+        for i, (item1, item2) in enumerate(zip(obj1, obj2)):
+            compare_objects(item1, item2, f"{attribute_name}[{i}]")
+
+    elif isinstance(obj1, dict):
+        # Compare dictionaries key-value pair-wise
+        for key in set(obj1.keys()) | set(obj2.keys()):
+            compare_objects(obj1.get(key), obj2.get(key), f"{attribute_name}.{key}")
+
+    elif hasattr(obj1, '__dict__'):
+        # Recursively compare attributes for objects with nested attributes
+        for attr_name in set(dir(obj1) + dir(obj2)):
+            if not attr_name.startswith('_'):
+                compare_objects(
+                    getattr(obj1, attr_name, None),
+                    getattr(obj2, attr_name, None),
+                    f"{attribute_name}.{attr_name}" if attribute_name else attr_name
+                )
+
+
 
 
 ''' Main Script'''
