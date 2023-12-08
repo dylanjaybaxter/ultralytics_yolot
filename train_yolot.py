@@ -241,7 +241,7 @@ def main_func(args):
     #model.eval()
     model.module.zero_states()
     if global_rank == 0:
-        mini_validator(model=model)
+        mini_validator(model=model.module)
     model.module.zero_states()
     model.module.model_to(device)
     dist.barrier()
