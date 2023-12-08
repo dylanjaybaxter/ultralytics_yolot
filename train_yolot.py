@@ -441,6 +441,11 @@ def compare_objects(obj1, obj2, attribute_name=''):
         if obj1 != obj2:
             print(f"Difference in attribute '{attribute_name}': {obj1} vs {obj2}")
 
+    elif isinstance(obj1, torch.Tensor):
+        # Compare PyTorch tensors
+        if not torch.equal(obj1, obj2):
+            print(f"Difference in attribute '{attribute_name}': {obj1} vs {obj2}")
+
     elif isinstance(obj1, list):
         # Compare lists element-wise
         for i, (item1, item2) in enumerate(zip(obj1, obj2)):
