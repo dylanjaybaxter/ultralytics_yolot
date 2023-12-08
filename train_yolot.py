@@ -186,15 +186,15 @@ def main_func(args):
                                        drop_last=False)
     val_sampler = DistributedSampler(val_dataset, shuffle=False,
                                        drop_last=False)
-    #mini_val_sampler = DistributedSampler(mini_val_dataset, shuffle=False,
-    #                                 drop_last=False)
+    mini_val_sampler = DistributedSampler(mini_val_dataset, shuffle=False,
+                                     drop_last=False)
     # Use Datasets to Create Autoloader
     train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
                               collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
     mini_val_loader = InfiniteDataLoader(mini_val_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
+                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=mini_val_sampler)
 
     # Initialize Model
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
@@ -309,9 +309,9 @@ def main_func(args):
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
                 mini_metrics = mini_validator(model=model)
-                tb_writer.add_scalar('mini_fitness', metrics['fitness'], epoch)
-                tb_writer.add_scalar('mini_precision', metrics['metrics/precision(B)'], epoch)
-                tb_writer.add_scalar('mini_recall', metrics['metrics/recall(B)'], epoch)
+                tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
+                tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
+                tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                                 epoch, seq_idx, loss, model_save_path, "mini_check.pt")
                 save_counter = 0
