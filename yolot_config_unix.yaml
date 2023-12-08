@@ -7,12 +7,12 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 # YOLOT Training Script settings
 gpu_workers: 1
 DEBUG: False
-run_name: "test2"
+run_name: "pretrained_w_val"
 load_name: "test2"
 met_save_path: "/workspace/results/"
 model_save_path: "/workspace/results/checkpoints/checkpoint.pth"
 model_load_path: "/workspace/results/checkpoints/checkpoint.pth"
-pt_load_path: ""
+pt_load_path: "/workspace/results/storage/yolot_pretrained.pt"
 seq_len: 6
 visualize: False
 prof: False

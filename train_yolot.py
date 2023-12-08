@@ -102,7 +102,7 @@ def main_func(args):
         workers = conf['workers']
         #model_save_path = conf['model_save_path']
         metrics_save_path = conf['met_save_path']
-        #model_load_path = conf['pt_load_path']
+        model_load_path = conf['pt_load_path']
         visualize = conf['visualize']
         sequence_len = conf['seq_len']
         cls_gain = conf['cls']
@@ -139,7 +139,6 @@ def main_func(args):
             print(f"Creating new run: {run_name}")
             os.mkdir(os.path.join(metrics_save_path, run_name))
             os.mkdir(os.path.join(metrics_save_path, run_name, "weights"))
-            model_load_path = ""
             model_save_path = os.path.join(metrics_save_path, run_name, "weights")
             model_save_name = "checkpoint.pth"
             os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
