@@ -101,7 +101,7 @@ def main_func(args):
             # Process Detections
             raw_dets = outputs[frame_idx][0]
             # NMS
-            dets = non_max_suppression(raw_dets, conf_thres=0.0001, iou_thres=0.5)
+            dets = non_max_suppression(raw_dets, conf_thres=0.25, iou_thres=0.5)
             print(f"Sequence {seq_idx}, Frame {frame_idx}: {dets[0].shape[0]} detections, {total_detections} total detections")
             for det_idx in range(dets[0].shape[0]):
                 conf = dets[0][det_idx,4]

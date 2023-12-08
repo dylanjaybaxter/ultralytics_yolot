@@ -232,7 +232,7 @@ def main_func(args):
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
-    validator(model=model)
+    validator(model=model.module)
 
     # Main Training Loop
     model.train()
@@ -317,7 +317,7 @@ def main_func(args):
 
         # Validate
         model.eval()
-        metrics = validator(model=model)
+        metrics = validator(model=model.module)
         if global_rank == 0:
             tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
             tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
