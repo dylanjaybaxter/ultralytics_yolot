@@ -318,19 +318,18 @@ def main_func(args):
                             epoch, 0, loss, model_save_path, model_save_name)
 
         # Validate
-        model.eval()
-        metrics = validator(model=model.module)
         if global_rank == 0:
+            model.eval()
+            metrics = validator(model=model.module)
             tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
             tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
             tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
             tb_writer.add_scalar('metrics/recall(B)', metrics['metrics/recall(B)'], epoch)
-
-        # Save Best
-        if metrics['fitness'] >= best_metric and global_rank==0:
-            print(f"Saving new best to {model_save_path}")
-            save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                            epoch, 0, loss, model_save_path, "best.pth")
+            # Save Best
+            if metrics['fitness'] >= best_metric:
+                print(f"Saving new best to {model_save_path}")
+                save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                                epoch, 0, loss, model_save_path, "best.pth")
 
         # Detach tensors
         scheduler.step()
