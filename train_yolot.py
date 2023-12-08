@@ -120,32 +120,33 @@ def main_func(args):
 
     if global_rank == 0:
         # Create File structure for the run
-        # Read list of existing runs
-        dirs = os.listdir(metrics_save_path)
-        # If run directory already exists, look for checkpoint
-        if os.path.exists(os.path.join(metrics_save_path, run_name)):
-            continuing = True
-            # Look for checkpoint
-            print(f"Continuing Run: {run_name}")
-            if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
-                model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
-                print("Using previous checkpoint...")
-            else:
-                print("Starting model from scratch")
-            model_save_path = os.path.join(metrics_save_path, run_name, "weights")
-            model_save_name = "checkpoint.pth"
-            log_dir = os.path.join(metrics_save_path, run_name, "tb")
-        else:
-            continuing = False
-            # Create new file structure
-            print(f"Creating new run: {run_name}")
+        if not os.path.exists(metrics_save_path, run_name):
             os.mkdir(os.path.join(metrics_save_path, run_name))
             os.mkdir(os.path.join(metrics_save_path, run_name, "weights"))
-            model_save_path = os.path.join(metrics_save_path, run_name, "weights")
-            model_save_name = "checkpoint.pth"
-            os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
-            log_dir = os.path.join(metrics_save_path, run_name, "tb")
             os.mkdir(os.path.join(metrics_save_path, run_name, "other"))
+            os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
+
+    # If run directory already exists, look for checkpoint
+    if os.path.exists(os.path.join(metrics_save_path, run_name)):
+        continuing = True
+        # Look for checkpoint
+        print(f"Continuing Run: {run_name}")
+        if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
+            model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
+            print("Using previous checkpoint...")
+        else:
+            print("Starting model from scratch")
+        model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+        model_save_name = "checkpoint.pth"
+        log_dir = os.path.join(metrics_save_path, run_name, "tb")
+    else:
+        continuing = False
+        # Create new file structure
+        print(f"Creating new run: {run_name}")
+        model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+        model_save_name = "checkpoint.pth"
+        log_dir = os.path.join(metrics_save_path, run_name, "tb")
+
 
         # Initialize Tensorboard
         dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
