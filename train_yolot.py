@@ -242,8 +242,11 @@ def main_func(args):
     #model.eval()
     model.module.zero_states()
     if global_rank == 0:
+        print("Validating...")
         old_val = copy.deepcopy(model.module)
         mini_validator(model=model.module)
+        model.train()
+        model.module.zero_states()
         compare_objects(old_val, model.module)
     model.module.zero_states()
     model.module.model_to(device)
@@ -261,6 +264,7 @@ def main_func(args):
         skipping = False
 
     #dist.barrier()
+    print(f"RANK {global_rank} Starting training loop")
     for epoch in range(starting_epoch,epochs+1):
         # Make sure model is in training mode
         model.train()
