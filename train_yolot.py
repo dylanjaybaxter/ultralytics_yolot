@@ -250,7 +250,7 @@ def main_func(args):
         compare_objects(old_val, model.module)
     model.module.zero_states()
     model.module.model_to(device)
-    #dist.barrier()
+    dist.barrier()
 
     # Main Training Loop
     model.train()
