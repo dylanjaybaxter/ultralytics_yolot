@@ -128,14 +128,15 @@ def main_func(args):
 
     # If run directory already exists, look for checkpoint
     if os.path.exists(os.path.join(metrics_save_path, run_name)):
-        continuing = True
         # Look for checkpoint
         print(f"Continuing Run: {run_name}")
         if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
             model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
             print("Using previous checkpoint...")
+            continuing = True
         else:
             print("Starting model from scratch")
+            continuing = False
         model_save_path = os.path.join(metrics_save_path, run_name, "weights")
         model_save_name = "checkpoint.pth"
         log_dir = os.path.join(metrics_save_path, run_name, "tb")
