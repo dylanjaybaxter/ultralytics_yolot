@@ -238,8 +238,8 @@ def main_func(args):
     mini_validator = SequenceValidator2(dataloader=mini_val_loader)
     model.eval()
     model.module.zero_states()
-    '''if global_rank == 0:
-        validator(model=model.module)'''
+    if global_rank == 0:
+        mini_validator(model=model.module)
     dist.barrier()
 
     # Main Training Loop
