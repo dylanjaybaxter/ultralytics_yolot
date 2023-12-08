@@ -148,7 +148,7 @@ def main_func(args):
         model_save_name = "checkpoint.pth"
         log_dir = os.path.join(metrics_save_path, run_name, "tb")
 
-
+    if global_rank == 0:
         # Initialize Tensorboard
         dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         log_dir = os.path.join(log_dir, dt)
