@@ -3,6 +3,7 @@ This is a script intended for training YOLOT: A modified recurrent variant of YO
 Author: Dylan Baxter
 Created: 8/7/23
 '''
+import copy
 import datetime
 
 import cv2
@@ -241,7 +242,7 @@ def main_func(args):
     #model.eval()
     model.module.zero_states()
     if global_rank == 0:
-        old_val = model.module.clone()
+        old_val = copy.deepcopy(model.module)
         mini_validator(model=model.module)
         compare_objects(old_val, model.module)
     model.module.zero_states()
