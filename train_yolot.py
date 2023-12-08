@@ -232,8 +232,8 @@ def main_func(args):
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
-    if global_rank == 0:
-        validator(model=model.module)
+    '''if global_rank == 0:
+        validator(model=model.module)'''
     dist.barrier()
 
     # Main Training Loop
@@ -241,7 +241,7 @@ def main_func(args):
     best_state = model.module.state_dict()
     best_metric = 100000000
     loss = 0 # Arbitrary Starting Loss for Display
-    if ckpt:
+    if ckpt and continuing:
         starting_epoch = ckpt['metadata']['epoch']
         skipping = True
     else:
@@ -266,7 +266,7 @@ def main_func(args):
         save_counter = 0
         for seq_idx, subsequence in enumerate(pbar):
             # Skip iterations if checkpoint
-            if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping and ckpt['metadata']['iteration'] < num_seq-10:
+            if ckpt and continuing and ckpt['metadata']['iteration'] > seq_idx and skipping and ckpt['metadata']['iteration'] < num_seq-10:
                 pbar.set_description(
                     f"Seq:{seq_idx + 1}/{num_seq}, Skipping to idx{ckpt['metadata']['iteration']}:")
                 pbar.refresh()
