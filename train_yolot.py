@@ -240,7 +240,8 @@ def main_func(args):
     mini_validator.dataloader.sampler.set_epoch(mini_epoch)
     #model.eval()
     model.module.zero_states()
-    mini_validator(model=model.module)
+    if global_rank == 0:
+        mini_validator(model=model.module)
     model.module.zero_states()
     model.module.model_to(device)
     #dist.barrier()
