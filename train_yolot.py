@@ -238,10 +238,12 @@ def main_func(args):
     mini_validator = SequenceValidator2(dataloader=mini_val_loader)
     mini_epoch = 0
     mini_validator.dataloader.sampler.set_epoch(mini_epoch)
-    model.eval()
+    #model.eval()
     model.module.zero_states()
     if global_rank == 0:
-        mini_validator(model=model.module)
+        mini_validator(model=model)
+    model.module.zero_states()
+    model.module.model_to(device)
     dist.barrier()
 
     # Main Training Loop
