@@ -26,7 +26,7 @@ class_dict = {
 
 # Dataset object definition
 class BMOTSDataset(Dataset):
-    def __init__(self, base_dir, split, seq_len=16, transform=None, input_size=[3,640,640], device='cpu', data_cap=1000000):
+    def __init__(self, base_dir, split, seq_len=16, transform=None, input_size=[3,640,640], device='cpu', data_cap=None):
         '''
         Initializes dataset by storing paths to images and labels
         :param base_dir: The base directory of the dataset
@@ -73,10 +73,10 @@ class BMOTSDataset(Dataset):
                         start_frame = start_frame + self.max_sequence_length
                         end_frame = min(end_frame + self.max_sequence_length, num_frames-1)
                         self.num_sequences = self.num_sequences + 1
-                        if self.num_sequences >= data_cap:
+                        if self.num_sequences >= data_cap and data_cap is not None:
                             break
                     self.num_vids = self.num_vids + 1
-                    if self.num_sequences >= data_cap:
+                    if self.num_sequences >= data_cap and data_cap is not None:
                         break
                 else:
                     print(f"No label for video of ID {dir}")
