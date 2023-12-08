@@ -189,7 +189,7 @@ def main_func(args):
     train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
                               collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                            collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=val_sampler)
+                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
 
     # Initialize Model
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
