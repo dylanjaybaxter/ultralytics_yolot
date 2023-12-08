@@ -124,6 +124,7 @@ def main_func(args):
         dirs = os.listdir(metrics_save_path)
         # If run directory already exists, look for checkpoint
         if os.path.exists(os.path.join(metrics_save_path, run_name)):
+            continuing = True
             # Look for checkpoint
             print(f"Continuing Run: {run_name}")
             if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
@@ -135,6 +136,7 @@ def main_func(args):
             model_save_name = "checkpoint.pth"
             log_dir = os.path.join(metrics_save_path, run_name, "tb")
         else:
+            continuing = False
             # Create new file structure
             print(f"Creating new run: {run_name}")
             os.mkdir(os.path.join(metrics_save_path, run_name))
@@ -192,10 +194,14 @@ def main_func(args):
     model.train()
     model.model_to(device)
     ckpt = None
-    if os.path.exists(model_load_path):
+    if os.path.exists(model_load_path) and continuing:
         print(f"Loading model from {model_load_path}")
         ckpt = torch.load(model_load_path)
         model.load_state_dict(ckpt['model'], strict=False)
+    elif os.path.exists(model_load_path) and not continuing:
+        print(f"Loading model from {model_load_path}")
+        ckpt = torch.load(model_load_path)
+        model.load_state_dict(ckpt.state_dict())
 
     print(f"Building parallel model with device: {torch.device(device)}")
     #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
