@@ -212,7 +212,7 @@ def main_func(args):
 
     # Define Optimizer and Scheduler
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
-    if ckpt:
+    if ckpt and continuing:
         optimizer.load_state_dict(ckpt['optimizer'])
         for group in optimizer.param_groups:
             group['lr'] = lr0
