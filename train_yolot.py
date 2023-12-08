@@ -241,7 +241,7 @@ def main_func(args):
     #model.eval()
     model.module.zero_states()
     if global_rank == 0:
-        old_val = model.module.copy()
+        old_val = model.module.clone()
         mini_validator(model=model.module)
         compare_objects(old_val, model.module)
     model.module.zero_states()
