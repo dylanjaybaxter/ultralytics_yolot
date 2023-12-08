@@ -232,7 +232,9 @@ def main_func(args):
     validator.dataloader.sampler.set_epoch(0)
     model.eval()
     model.module.zero_states()
-    validator(model=model.module)
+    if global_rank == 0:
+        validator(model=model.module)
+    dist.barrier()
 
     # Main Training Loop
     model.train()
