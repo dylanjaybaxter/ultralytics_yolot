@@ -284,6 +284,7 @@ def main_func(args):
             model.module.zero_states()
             # Forward Pass
             with autocast(enabled=False):
+                print(subsequence[0])
                 outputs = model(subsequence[0]['img'].to(device))
                 # Compute Loss
                 loss = model.module.sequence_loss(outputs, subsequence[0])
