@@ -240,11 +240,10 @@ def main_func(args):
     mini_validator.dataloader.sampler.set_epoch(mini_epoch)
     #model.eval()
     model.module.zero_states()
-    if global_rank == 0:
-        mini_validator(model=model.module)
+    mini_validator(model=model.module)
     model.module.zero_states()
     model.module.model_to(device)
-    dist.barrier()
+    #dist.barrier()
 
     # Main Training Loop
     model.train()
@@ -257,7 +256,7 @@ def main_func(args):
         starting_epoch = 1
         skipping = False
 
-    dist.barrier()
+    #dist.barrier()
     for epoch in range(starting_epoch,epochs+1):
         # Make sure model is in training mode
         model.train()
