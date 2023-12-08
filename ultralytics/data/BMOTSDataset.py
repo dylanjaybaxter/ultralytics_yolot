@@ -73,11 +73,13 @@ class BMOTSDataset(Dataset):
                         start_frame = start_frame + self.max_sequence_length
                         end_frame = min(end_frame + self.max_sequence_length, num_frames-1)
                         self.num_sequences = self.num_sequences + 1
-                        if self.num_sequences >= data_cap and data_cap is not None:
-                            break
+                        if data_cap is not None:
+                            if self.num_sequences >= data_cap:
+                                break
                     self.num_vids = self.num_vids + 1
-                    if self.num_sequences >= data_cap and data_cap is not None:
-                        break
+                    if data_cap is not None:
+                        if self.num_sequences >= data_cap:
+                            break
                 else:
                     print(f"No label for video of ID {dir}")
         random.seed(1)
