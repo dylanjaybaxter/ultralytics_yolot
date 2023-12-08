@@ -120,7 +120,7 @@ def main_func(args):
 
     if global_rank == 0:
         # Create File structure for the run
-        if not os.path.exists(metrics_save_path, run_name):
+        if not os.path.exists(os.path.join(metrics_save_path, run_name)):
             os.mkdir(os.path.join(metrics_save_path, run_name))
             os.mkdir(os.path.join(metrics_save_path, run_name, "weights"))
             os.mkdir(os.path.join(metrics_save_path, run_name, "other"))
