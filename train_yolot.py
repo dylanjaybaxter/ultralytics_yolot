@@ -195,7 +195,7 @@ def main_func(args):
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
     mini_val_loader = InfiniteDataLoader(mini_val_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=True, sampler=mini_val_sampler)
+                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=mini_val_sampler)
 
     # Initialize Model
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
@@ -245,7 +245,7 @@ def main_func(args):
         mini_validator.dataloader.sampler.set_epoch(mini_epoch)
         print("Validating...")
         old_val = copy.deepcopy(model.module)
-        mini_validator(model=model.module)
+        #mini_validator(model=model.module)
         model.train()
         model.module.zero_states()
         compare_objects(old_val, model.module)
