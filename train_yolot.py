@@ -272,7 +272,8 @@ def main_func(args):
         model.train()
         model.module.model_to(device)
         train_loader.sampler.set_epoch(epoch)
-        validator.dataloader.sampler.set_epoch(epoch)
+        if global_rank == 0:
+            validator.dataloader.sampler.set_epoch(epoch)
 
         # Set Up Loading bar for epoch
         bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
