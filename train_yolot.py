@@ -181,7 +181,7 @@ def main_func(args):
     # Create Datasets for Training and Validation
     training_dataset = BMOTSDataset(dataset_path, "train", device=device, seq_len=sequence_len)
     val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len)
-    mini_val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len, data_cap=300)
+    mini_val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len, data_cap=150)
     # Create Samplers for distributed processing
     train_sampler = DistributedSampler(training_dataset, shuffle=False,
                                        drop_last=False)
@@ -195,7 +195,7 @@ def main_func(args):
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
     mini_val_loader = InfiniteDataLoader(mini_val_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=mini_val_sampler)
+                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=True, sampler=mini_val_sampler)
 
     # Initialize Model
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
