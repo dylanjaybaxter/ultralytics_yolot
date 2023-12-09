@@ -201,6 +201,7 @@ def main_func(args):
     model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
+    model.to(device)
     ckpt = None
     if os.path.exists(model_load_path) and continuing:
         print(f"Loading model from {model_load_path}")
@@ -249,6 +250,7 @@ def main_func(args):
         model.module.zero_states()
         compare_objects(old_val, model.module)
     model.module.zero_states()
+    model.to(device)
     model.module.model_to(device)
     dist.barrier()
 
@@ -476,7 +478,7 @@ def compare_objects(obj1, obj2, attribute_name=''):
 
 ''' Main Script'''
 if __name__ == '__main__':
-    init_distributed()
+    #init_distributed()
     args = init_parser().parse_args()
     print(args)
     main_func(args)
