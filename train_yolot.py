@@ -478,7 +478,7 @@ def compare_objects(obj1, obj2, attribute_name=''):
 
 ''' Main Script'''
 if __name__ == '__main__':
-    #init_distributed()
+    init_distributed()
     args = init_parser().parse_args()
     print(args)
     main_func(args)
