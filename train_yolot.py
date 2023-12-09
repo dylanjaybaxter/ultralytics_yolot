@@ -234,9 +234,9 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    validator = SequenceValidator2(dataloader=val_loader)
+    validator = SequenceValidator2(dataloader=val_loader, device=device)
     validator.dataloader.sampler.set_epoch(0)
-    mini_validator = SequenceValidator2(dataloader=mini_val_loader)
+    mini_validator = SequenceValidator2(dataloader=mini_val_loader, device=device)
     mini_epoch = 0
     mini_validator.dataloader.sampler.set_epoch(mini_epoch)
     #model.eval()
