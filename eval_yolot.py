@@ -60,7 +60,7 @@ def main_func(args):
 
     # Set up val dataloader
     print("Building Dataset...")
-    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=24)
+    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=24, data_cap=4)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=1, shuffle=False,
                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
 
