@@ -20,7 +20,7 @@ lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 log_dir: "/workspace/results/tensor_board/"
 log_port: 6006
 seq_cap: 10
-save_freq: 500
+save_freq: 50
 box: 7.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
