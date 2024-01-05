@@ -324,16 +324,15 @@ def main_func(args):
                 #mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
                 with torch.no_grad():
-                    mini_metrics = mini_validator(model=model.clone().to('cpu'))
+                    mini_metrics = mini_validator(model=model.module.clone().to('cpu'))
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                                 epoch, seq_idx, loss, model_save_path, "mini_check.pt")
+
+            if save_counter > save_freq:
                 save_counter = 0
-            else:
-                save_counter += 1
-            if save_counter == 0:
                 dist.barrier()
 
             # Exit early for debug
