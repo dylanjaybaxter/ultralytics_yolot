@@ -320,7 +320,7 @@ def main_func(args):
 
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
-
+                print("Validating...")
                 #mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
                 with torch.no_grad():
@@ -334,6 +334,8 @@ def main_func(args):
             if save_counter > save_freq:
                 save_counter = 0
                 dist.barrier()
+            else:
+                save_counter += 1
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
