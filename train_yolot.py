@@ -331,6 +331,8 @@ def main_func(args):
                 save_counter = 0
             else:
                 save_counter += 1
+            if save_counter == 0:
+                dist.barrier()
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
