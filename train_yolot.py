@@ -322,7 +322,7 @@ def main_func(args):
             if global_rank == 0 and save_counter > save_freq:
                 mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
-                mini_metrics = mini_validator(model=model)
+                mini_metrics = mini_validator(model=copy.deepcopy(model))
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'], (epoch-1)*len(train_loader)+seq_idx)
