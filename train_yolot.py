@@ -97,7 +97,7 @@ def main_func(args):
     if config_path:
         with open(config_path, 'r') as conf_file:
             conf = yaml.safe_load(conf_file)
-        model = conf['model']
+        model_name = conf['model']
         epochs = conf['epochs']
         dataset_path = conf['data']
         workers = conf['workers']
@@ -198,7 +198,7 @@ def main_func(args):
                                     collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=mini_val_sampler)
 
     # Initialize Model
-    model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
+    model = SequenceModel(cfg=model_name, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
     model.to(device)
@@ -219,7 +219,7 @@ def main_func(args):
 
     if global_rank == 0:
         print("Building validator model: ")
-        val_model = SequenceModel(cfg=model, device='cpu', verbose=False).eval()
+        val_model = SequenceModel(cfg=model_name, device='cpu', verbose=False).eval()
         print("Validator model complete")
 
     # Define Optimizer and Scheduler
