@@ -219,7 +219,7 @@ def main_func(args):
 
     if global_rank == 0:
         print("Building validator model: ")
-        val_model = SequenceModel(cfg=model_name, device='cpu', verbose=False).eval()
+        val_model = SequenceModel(cfg=model_name, device=device, verbose=False).eval()
         print("Validator model complete")
 
     # Define Optimizer and Scheduler
