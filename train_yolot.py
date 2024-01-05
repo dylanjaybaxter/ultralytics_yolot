@@ -320,7 +320,7 @@ def main_func(args):
 
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
-                mini_validator.sampler.set_epoch(mini_epoch)
+                #mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
                 mini_metrics = mini_validator(model=copy.deepcopy(model))
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
