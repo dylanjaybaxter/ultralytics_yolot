@@ -334,7 +334,7 @@ def main_func(args):
                 with torch.no_grad():
                     print(model.module.state_dict())
                     val_model.eval()
-                    sd = model.module.state_dict().copy().detach()
+                    sd = model.module.state_dict().copy()
                     val_model.load_state_dict(sd)
                     mini_metrics = mini_validator(model=val_model)
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
