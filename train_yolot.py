@@ -332,8 +332,8 @@ def main_func(args):
                 #mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
                 with torch.no_grad():
-                    print(model.module.state_dict())
-                    val_model.eval()
+                    val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
+                    val_model.model_to(device)
                     sd = model.module.state_dict().copy()
                     val_model.load_state_dict(sd)
                     mini_metrics = mini_validator(model=val_model)
