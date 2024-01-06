@@ -251,6 +251,7 @@ def main_func(args):
         mini_validator.dataloader.sampler.set_epoch(mini_epoch)
         print("Validating...")
         #old_val = copy.deepcopy(model.module)
+        val_model.train()
         val_model.load_state_dict(model.module.state_dict())
         mini_validator(model=val_model)
         model.train()
@@ -332,6 +333,7 @@ def main_func(args):
                 mini_epoch += 1
                 with torch.no_grad():
                     print(model.module.state_dict())
+                    val_model.train()
                     val_model.load_state_dict(model.module.state_dict().copy())
                     mini_metrics = mini_validator(model=val_model)
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
