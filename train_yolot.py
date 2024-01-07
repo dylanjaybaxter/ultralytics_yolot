@@ -337,7 +337,7 @@ def main_func(args):
                     sd = model.module.state_dict().copy()
                     val_model.load_state_dict(sd)
                     mini_metrics = mini_validator(model=val_model)
-                    met = mini_validator(model=model.module)
+                    # met = mini_validator(model=model.module, fuse=False)
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'], (epoch-1)*len(train_loader)+seq_idx)
