@@ -362,8 +362,12 @@ def main_func(args):
 
         # Validate
         if global_rank == 0:
-            val_model.load_state_dict(model.module.state_dict())
-            metrics = validator(model=val_model)
+            with torch.no_grad():
+                val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
+                val_model.model_to(device)
+                sd = model.module.state_dict().copy()
+                val_model.load_state_dict(sd)
+                metrics = mini_validator(model=val_model)
             tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
             tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
             tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
