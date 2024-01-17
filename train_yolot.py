@@ -158,7 +158,7 @@ def main_func(args):
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
         tb_writer = SummaryWriter(log_dir=log_dir)
 
-
+    dist.barrier()
 
     # Setup Device
     print_cuda_info()
@@ -174,6 +174,8 @@ def main_func(args):
     torch.autograd.set_detect_anomaly(True)
     scaler = GradScaler(enabled=True)
 
+    dist.barrier()
+    
     # Setup Dataloader
     if global_rank == 0:
         print("Building Dataset")
