@@ -251,7 +251,7 @@ def main_func(args):
         #old_val = copy.deepcopy(model.module)
         val_model.train()
         val_model.load_state_dict(model.module.state_dict())
-        mini_validator(model=model)
+        mini_validator(model=model.module)
         model.train()
         model.module.zero_states()
         #compare_objects(old_val, model.module)
