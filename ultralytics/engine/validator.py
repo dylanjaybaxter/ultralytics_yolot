@@ -106,7 +106,7 @@ class BaseValidator:
         self.callbacks = _callbacks or callbacks.get_default_callbacks()
 
     @smart_inference_mode()
-    def __call__(self, trainer=None, model=None):
+    def __call__(self, trainer=None, model=None, fuse=False):
         """
         Supports validation of a pre-trained model if passed or a model being trained
         if trainer is passed (trainer gets priority).
@@ -131,7 +131,8 @@ class BaseValidator:
                                 device=select_device(self.args.device, self.args.batch),
                                 dnn=self.args.dnn,
                                 data=self.args.data,
-                                fp16=self.args.half)
+                                fp16=self.args.half,
+                                fuse=fuse)
             self.model = model
             self.device = model.device  # update device
             self.args.half = model.fp16  # update half

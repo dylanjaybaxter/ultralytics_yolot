@@ -6,7 +6,7 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 
 # YOLOT Training Script settings
 gpu_workers: 1
-DEBUG: False
+DEBUG: True
 run_name: "mini_val"
 load_name: "test2"
 met_save_path: "/workspace/results/"

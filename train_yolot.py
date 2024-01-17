@@ -55,7 +55,6 @@ import pstats
 default_dataset_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
 default_model_path = "./model.pt"
 default_num_workers = 4
-DEBUG = False
 default_metric_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results"
 default_model_save_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training"
 default_model_load_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training\\yolot_test.pt"
@@ -241,7 +240,6 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    #model.eval()
     model.module.zero_states()
     if global_rank == 0:
         validator = SequenceValidator2(dataloader=val_loader)
@@ -253,7 +251,7 @@ def main_func(args):
         #old_val = copy.deepcopy(model.module)
         val_model.train()
         val_model.load_state_dict(model.module.state_dict())
-        mini_validator(model=val_model)
+        mini_validator(model=model)
         model.train()
         model.module.zero_states()
         #compare_objects(old_val, model.module)
@@ -362,12 +360,7 @@ def main_func(args):
 
         # Validate
         if global_rank == 0:
-            with torch.no_grad():
-                val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
-                val_model.model_to(device)
-                sd = model.module.state_dict().copy()
-                val_model.load_state_dict(sd)
-                metrics = mini_validator(model=val_model)
+            metrics = validator(model=model)
             tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
             tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
             tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
