@@ -216,11 +216,11 @@ def main_func(args):
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     print("model built")
 
-    if global_rank == 0:
-        print("Building validator model: ")
-        val_model = SequenceModel(cfg=model_name, device=device, verbose=False).eval()
-        val_model.model_to(device)
-        print("Validator model complete")
+    # if global_rank == 0:
+    #     print("Building validator model: ")
+    #     val_model = SequenceModel(cfg=model_name, device=device, verbose=False).eval()
+    #     val_model.model_to(device)
+    #     print("Validator model complete")
 
     # Define Optimizer and Scheduler
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
@@ -248,9 +248,9 @@ def main_func(args):
         mini_epoch = 0
         mini_validator.dataloader.sampler.set_epoch(mini_epoch)
         print("Validating...")
-        #old_val = copy.deepcopy(model.module)
-        val_model.train()
-        val_model.load_state_dict(model.module.state_dict())
+        # old_val = copy.deepcopy(model.module)
+        # val_model.train()
+        # val_model.load_state_dict(model.module.state_dict())
         mini_validator(model=model.module)
         model.train()
         model.module.zero_states()
@@ -330,11 +330,11 @@ def main_func(args):
                 #mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
                 with torch.no_grad():
-                    val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
-                    val_model.model_to(device)
-                    sd = model.module.state_dict().copy()
-                    val_model.load_state_dict(sd)
-                    mini_metrics = mini_validator(model=val_model)
+                    # val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
+                    # val_model.model_to(device)
+                    # sd = model.module.state_dict().copy()
+                    # val_model.load_state_dict(sd)
+                    mini_metrics = mini_validator(model=model.module)
                     # met = mini_validator(model=model.module, fuse=False)
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
                 tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
@@ -360,7 +360,7 @@ def main_func(args):
 
         # Validate
         if global_rank == 0:
-            metrics = validator(model=model)
+            metrics = validator(model=model.module)
             tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
             tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
             tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
