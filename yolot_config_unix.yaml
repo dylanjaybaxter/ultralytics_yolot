@@ -18,7 +18,7 @@ visualize: False
 prof: False
 lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 log_dir: "/workspace/results/tensor_board/"
-log_port: 6007
+log_port: 6006
 seq_cap: 2000
 save_freq: 20
 box: 7.5  # (float) box loss gain
