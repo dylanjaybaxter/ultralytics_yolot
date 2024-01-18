@@ -46,7 +46,7 @@ def cleanup(*args):
     if 'tb' in locals():
         tb.kill()
     dist.destroy_process_group()
-for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
+for sig in (SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM):
     signal(sig, cleanup)
 
 # Profiling
