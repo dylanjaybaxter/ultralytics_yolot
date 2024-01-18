@@ -8,10 +8,8 @@ import datetime
 
 import cv2
 import torch
-from torch.cuda import amp
 import os
 import yaml
-import multiprocessing
 
 ''' Imports '''
 # Standard Library
@@ -20,31 +18,36 @@ from pathlib import Path
 # Package Imports
 # Local Imports
 from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
-from ultralytics.nn.tasks import parse_model, yaml_model_load
-from torch.utils.data import DataLoader
-from ultralytics.nn.tasks import DetectionModel
-from ultralytics.utils.loss import v8DetectionLoss
-from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
 from ultralytics.cfg import ROOT
 from ultralytics.nn.SequenceModel import SequenceModel
 import torch.optim as opt
 from tqdm import tqdm
 from ultralytics.utils.ops import non_max_suppression
-from torchvision.transforms.functional import resize
 from torch.cuda.amp import autocast, GradScaler
 
 # Parallelization
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.multiprocessing as mp
 from ultralytics.data.build import InfiniteDataLoader
 from torch.optim.lr_scheduler import LambdaLR
 
 # Logging
 from tensorboard import program
 from torch.utils.tensorboard import SummaryWriter
+
+# Handle Cleanup
+from signal import *
+def cleanup(*args):
+    print("Cleaning Up...")
+    if 'tb_writer' in locals():
+        tb_writer.close()
+    if 'tb' in locals():
+        tb.kill()
+    dist.destroy_process_group()
+for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
+    signal(sig, cleanup)
 
 # Profiling
 import cProfile
@@ -158,7 +161,6 @@ def main_func(args):
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
         tb_writer = SummaryWriter(log_dir=log_dir)
 
-    dist.barrier()
 
     # Setup Device
     print_cuda_info()
@@ -174,8 +176,7 @@ def main_func(args):
     torch.autograd.set_detect_anomaly(True)
     scaler = GradScaler(enabled=True)
 
-    dist.barrier()
-    
+
     # Setup Dataloader
     if global_rank == 0:
         print("Building Dataset")
