@@ -254,6 +254,7 @@ def main_func(args):
         # old_val = copy.deepcopy(model.module)
         # val_model.train()
         # val_model.load_state_dict(model.module.state_dict())
+
         mini_validator(model=model.module)
         model.train()
         model.module.zero_states()
@@ -330,13 +331,14 @@ def main_func(args):
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
                 print("Validating...")
-                #mini_validator.sampler.set_epoch(mini_epoch)
+                mini_validator.sampler.set_epoch(mini_epoch)
                 mini_epoch += 1
                 with torch.no_grad():
                     # val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
                     # val_model.model_to(device)
                     # sd = model.module.state_dict().copy()
                     # val_model.load_state_dict(sd)
+                    model.eval()
                     mini_metrics = mini_validator(model=model.module)
                     # met = mini_validator(model=model.module, fuse=False)
                 tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
@@ -344,6 +346,7 @@ def main_func(args):
                 tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                                 epoch, seq_idx, loss, model_save_path, "mini_check.pt")
+                dist.barrier()
 
             if save_counter > save_freq:
                 save_counter = 0
