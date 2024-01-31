@@ -10,7 +10,7 @@ met_save_path: "/datasets/BDD100k/results"
 model_save_path: "/datasets/BDD100k/results"
 model_load_path: "/datasets/BDD100k/pretrained/yolot_pretrained.pt"
 run_name: "mpac100"
-seq_len: 6
+seq_len: 8
 visualize: False
 prof: False
 lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
