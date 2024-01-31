@@ -29,9 +29,6 @@ import atexit
 import cProfile
 import pstats
 
-# Globals
-DEBUG = True
-
 
 class YolotTrainer():
     def __init__(self, cfg=None):
@@ -60,6 +57,7 @@ class YolotTrainer():
         self.visualize = cfg['visualize']
         self.prof = cfg['prof']
         self.ddp = cfg['ddp']
+        self.DEBUG = cfg['DEBUG']
 
         # Setup Device
         mp.set_start_method('spawn')
@@ -182,8 +180,10 @@ class YolotTrainer():
                                             sampler=sampler)
         else:
             sampler = None
-            dataloader = DataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
-                                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
+            '''dataloader = DataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
+                                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)'''
+            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
+                                            collate_fn=collate_fn, drop_last=False, pin_memory=False)
 
         return dataloader
 
@@ -307,7 +307,8 @@ class YolotTrainer():
                     save_counter += 1
 
                 # Exit early for debug
-                if DEBUG and seq_idx >= self.seq_cap:
+                if self.DEBUG and seq_idx >= self.seq_cap:
+                    print(".................Breaking Early for debug reasons..................")
                     break
 
             # Save Checkpoint
