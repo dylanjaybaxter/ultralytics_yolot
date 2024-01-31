@@ -47,3 +47,4 @@ py-cpuinfo  # display CPU info
 # roboflow
 torchmetrics # iou function
 pycocotools
+tensorboard

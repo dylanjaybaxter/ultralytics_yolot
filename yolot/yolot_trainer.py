@@ -91,6 +91,7 @@ class YolotTrainer():
             print(f"Creating new run: {self.run_name}")
         self.paths['model_save'] = os.path.join(self.paths['run'], "weights")
         self.paths['tb_dir'] = os.path.join(self.paths['run'], "tb")
+        print(f"Saving run to {self.paths['run']}")
 
         # Load Model
         self.model = self.build_model(model_conf=self.paths['model_name'], model_load=self.paths['model_load'])
@@ -108,7 +109,7 @@ class YolotTrainer():
         # Define Optimizer and Scheduler
         self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=0.9)
         # If loading from a checkpoint, load the optimizer
-        if self.ckpt and self.continuing:
+        if self.ckpt is not None and self.continuing:
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
             for group in self.optimizer.param_groups:
                 group['lr'] = self.lr0
@@ -146,6 +147,8 @@ class YolotTrainer():
             print(f"Loading model_load from {model_load}")
             self.ckpt = torch.load(model_load)
             model.load_state_dict(self.ckpt)
+        else:
+            self.ckpt = None
         print(f"Building parallel model_load with device: {torch.device(self.device)}")
 
         # Attributes bandaid
