@@ -183,7 +183,7 @@ class YolotTrainer():
             '''dataloader = DataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
                                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False)'''
             dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
-                                            collate_fn=collate_fn, drop_last=False, pin_memory=False)
+                                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
 
         return dataloader
 
