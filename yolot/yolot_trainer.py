@@ -2,6 +2,7 @@
 import os
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -189,7 +190,7 @@ class YolotTrainer():
     def build_validator(self, data_path, limit, seq_len):
         # Create Validator
         val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len)
-        validator = SequenceValidator2(dataloader=val_loader, save_dir=self.paths['mini'])
+        validator = SequenceValidator2(dataloader=val_loader, save_dir=Path(self.paths['mini']))
         validator.training = True
         return validator
 
