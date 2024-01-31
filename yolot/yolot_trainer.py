@@ -67,12 +67,14 @@ class YolotTrainer():
 
         # Setup Save Directories
         self.paths['run'] = os.path.join(self.paths['base'], self.run_name)
+        self.paths['mini'] = os.path.join(self.paths['run'], "mini")
         if self.global_rank == 0:
             # Create File structure for the run
             if not os.path.exists(self.paths['run']):
                 os.mkdir(os.path.join(self.paths['run']))
                 os.mkdir(os.path.join(self.paths['run'], "weights"))
                 os.mkdir(os.path.join(self.paths['run'], "other"))
+                os.mkdir(os.path.join(self.paths['run'], "mini"))
                 os.mkdir(os.path.join(self.paths['run'], "tb"))
         # If run directory already exists, look for checkpoint
         if os.path.exists(self.paths['run']):
@@ -187,7 +189,7 @@ class YolotTrainer():
     def build_validator(self, data_path, limit, seq_len):
         # Create Validator
         val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len)
-        validator = SequenceValidator2(dataloader=val_loader)
+        validator = SequenceValidator2(dataloader=val_loader, save_dir=self.paths['mini'])
         validator.training = True
         return validator
 
