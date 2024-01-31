@@ -40,7 +40,7 @@ class BMOTSDataset(Dataset):
         self.base_dir = base_dir
         self.transform = transform
         self.input_size = input_size
-        self.resz = Resize(input_size[1:])
+        self.resz = Resize(input_size[1:], antialias=True)
         self.max_sequence_length = seq_len
         self.device = device
 
