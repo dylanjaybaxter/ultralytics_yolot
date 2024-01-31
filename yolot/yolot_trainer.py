@@ -120,7 +120,7 @@ class YolotTrainer():
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=[lam1])
 
         # Initialize Tensorboard
-        self.tb_writer, self.tb_prog = self.init_tb(self.paths['tb_dir'], port=6008)
+        self.tb_writer, self.tb_prog = self.init_tb(self.paths['tb_dir'], port=self.tb_port)
 
         # Setup Cleanup
         atexit.register(self.cleanup)
