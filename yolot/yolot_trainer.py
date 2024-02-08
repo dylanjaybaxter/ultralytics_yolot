@@ -259,7 +259,7 @@ class YolotTrainer():
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
                 
-                self.display_predictions(subsequence, outputs, 1)
+                # self.display_predictions(subsequence, outputs, 1)
 
                 # Zero Out Leftover Gradients
                 self.optimizer.zero_grad()
