@@ -6,19 +6,18 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 
 # YOLOT Training Script settings
 DEBUG: False
-met_save_path: "/mnt/c/Users/dylan/Documents/Data/yolot_training_results"
-model_save_path: "/mnt/c/Users/dylan/Documents/Data/Models/yolot_training"
-model_load_path: "/mnt/c/Users/dylan/Documents/ultralytics_yolot/yolot_pretrained.pt"
-pt_load_path: "/mnt/c/Users/dylan/Documents/Data/Models/yolot_training/yolot_test.pt"
-run_name: "test"
-seq_len: 6
+met_save_path: "/datasets/BDD100k/results"
+model_save_path: "/datasets/BDD100k/results"
+model_load_path: "/datasets/BDD100k/pretrained/yolot_pretrained.pt"
+run_name: "mpac100"
+seq_len: 8
 visualize: False
 prof: False
 lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
-log_dir: "/workspace/results/tensor_board/"
+log_dir: ""
 log_port: 6006
 seq_cap: 2000
-save_freq: 20
+save_freq: 200
 box: 7.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
@@ -26,8 +25,8 @@ ddp: False
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: "yolov8Tn.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
-data:  "/mnt/c/Users/dylan/Documents/Data/BDD100k_MOT202/bdd100k" # (str, optional) path to data file, i.e. coco128.yaml
-epochs: 1  # (int) number of epochs to train for
+data:  "/datasets/BDD100k/bdd100k_ws/bdd100k/" # (str, optional) path to data file, i.e. coco128.yaml
+epochs: 100  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
 batch: 16  # (int) number of images per batch (-1 for AutoBatch)
 imgsz: 640  # (int | list) input images size as int for train and val modes, or list[w,h] for predict and export modes
@@ -35,7 +34,7 @@ save: True  # (bool) save train checkpoints and predict results
 save_period: -1 # (int) Save checkpoint every x epochs (disabled if < 1)
 cache: False  # (bool) True/ram, disk or False. Use cache for data loading
 device:  # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
-workers: 6  # (int) number of worker threads for data loading (per RANK if DDP)
+workers: 8  # (int) number of worker threads for data loading (per RANK if DDP)
 project:  # (str, optional) project name
 name:  # (str, optional) experiment name, results saved to 'project/name' directory
 exist_ok: False  # (bool) whether to overwrite existing experiment
@@ -100,16 +99,12 @@ workspace: 4  # (int) TensorRT: workspace size (GB)
 nms: False  # (bool) CoreML: add NMS
 
 # Hyperparameters ------------------------------------------------------------------------------------------------------
-lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 lrf: 0.01  # (float) final learning rate (lr0 * lrf)
 momentum: 0.937  # (float) SGD momentum/Adam beta1
 weight_decay: 0.0005  # (float) optimizer weight decay 5e-4
 warmup_epochs: 3.0  # (float) warmup epochs (fractions ok)
 warmup_momentum: 0.8  # (float) warmup initial momentum
 warmup_bias_lr: 0.1  # (float) warmup initial bias lr
-box: 7.5  # (float) box loss gain
-cls: 0.5  # (float) cls loss gain (scale with pixels)
-dfl: 1.5  # (float) dfl loss gain
 pose: 12.0  # (float) pose loss gain
 kobj: 1.0  # (float) keypoint obj loss gain
 label_smoothing: 0.0  # (float) label smoothing (fraction)

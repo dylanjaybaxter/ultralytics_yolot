@@ -16,6 +16,7 @@ from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch
 from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
 from ultralytics.nn.SequenceModel import SequenceModel
 from ultralytics.data.build import InfiniteDataLoader
+from ultralytics.utils.ops import non_max_suppression
 # Parallel
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
@@ -28,7 +29,7 @@ import atexit
 # Profiling
 import cProfile
 import pstats
-
+import cv2
 
 class YolotTrainer():
     def __init__(self, cfg=None):
@@ -126,7 +127,7 @@ class YolotTrainer():
     def setup_device(self):
         print(torch.__version__)
         print(torch.cuda.nccl.is_available(torch.randn(1).cuda()))
-        print(torch.cuda.nccl.version())
+        #print(torch.cuda.nccl.version())
         print(f"Training on GR: {self.global_rank}/{self.world_size}, LR: {self.local_rank}...checking in...")
         if torch.cuda.is_available():
             self.device = 'cuda:' + str(self.local_rank)
@@ -180,11 +181,8 @@ class YolotTrainer():
                                             sampler=sampler)
         else:
             sampler = None
-            '''dataloader = DataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
-                                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)'''
             dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
                                             collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
-
         return dataloader
 
     def build_validator(self, data_path, limit, seq_len):
@@ -260,6 +258,8 @@ class YolotTrainer():
                         loss = self.model.module.sequence_loss(outputs, subsequence)
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
+                
+                self.display_predictions(subsequence, outputs, 1)
 
                 # Zero Out Leftover Gradients
                 self.optimizer.zero_grad()
@@ -382,6 +382,41 @@ class YolotTrainer():
         if self.ddp:
             dist.destroy_process_group()
         #self.tb_prog.kill()
+    
+    def display_predictions(self, batch, preds, num_frames):
+        # For first four images in batch
+        images = []
+        for i in range(min(num_frames,batch['img'].size()[0])):
+            image = batch['img'][i, :, :, :].cpu().transpose(0,1).transpose(1,2).numpy()
+            h, w = batch['ori_shape'][i]
+            image = cv2.cvtColor(cv2.resize(image, (w,h)), cv2.COLOR_RGB2BGR)
+            pred = torch.cat([stride.view(1,144,-1) for stride in preds[i]], dim=2)
+            filtered_pred = non_max_suppression(pred, conf_thres=0.9, max_wh=1, iou_thres=0.6, classes=[0,1,2])
+            # Draw Labels on Image
+            color_label = (255,0,0)
+            for j in range(batch['bboxes'].size()[0]):
+                if batch['frame_idx'][j] == i:
+                    box = batch['bboxes'][j,:]
+                    x1 = int((box[0] - 0.5*box[2])*w)
+                    y1 = int((box[1] - 0.5*box[3])*h)
+                    x2 = int((box[0] + 0.5*box[2])*w)
+                    y2 = int((box[1] + 0.5*box[3])*h)
+                    image = cv2.rectangle(image, (x1, y1), (x2, y2), color_label, thickness=2)
+
+            color_pred = (0,255,0)
+            for pred_ind in range(filtered_pred[0].size()[0]):
+                # Check for class 1
+                if filtered_pred[0][pred_ind,5] == 1.0:
+                    box = filtered_pred[0][pred_ind,0:4]
+                    conf = filtered_pred[0][pred_ind,4]
+                    x1 = int((box[0] - 0.5 * box[2]) * w)
+                    y1 = int((box[1] - 0.5 * box[3]) * h)
+                    x2 = int((box[0] + 0.5 * box[2]) * w)
+                    y2 = int((box[1] + 0.5 * box[3]) * h)
+                    image = cv2.rectangle(image, (x1, y1), (x2, y2), color_pred, thickness=2)
+
+            cv2.imshow('Label Output', image*255)
+            cv2.waitKey(1)
 
 
 

@@ -61,7 +61,7 @@ default_num_workers = 4
 default_metric_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results"
 default_model_save_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training"
 default_model_load_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training\\yolot_test.pt"
-default_conf_path = "yolot_config.yaml"
+default_conf_path = "configs/yolot_config.yaml"
 
 local_rank = int(os.environ["LOCAL_RANK"])
 global_rank = int(os.environ["RANK"])
