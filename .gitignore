@@ -162,3 +162,8 @@ weights/
 # Results folder
 /results/
 outputs.prof
+
+.vscode/
+activate/
+venv*
+venv*

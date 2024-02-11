@@ -217,6 +217,7 @@ class YolotTrainer():
 
         # dist.barrier()
         print(f"RANK {self.global_rank} Starting training loop")
+        iteration = 0
         for epoch in range(starting_epoch, self.epochs + 1):
             # Make sure model is in training mode
             self.model.train()
@@ -236,6 +237,9 @@ class YolotTrainer():
             # Single Epoch Training Loop
             save_counter = 0
             for seq_idx, subsequence in enumerate(pbar):
+                # Update iteration counter
+                iteration = (epoch - 1) * len(self.dataloader) + seq_idx
+                epoch_prog = iteration/len(self.dataloader)
                 # Skip iterations if checkpoint
                 if self.ckpt and self.continuing and self.ckpt['metadata']['iteration'] > seq_idx and \
                         skipping and self.ckpt['metadata']['iteration'] < num_seq - 10:
@@ -258,8 +262,8 @@ class YolotTrainer():
                         loss = self.model.module.sequence_loss(outputs, subsequence)
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
-                
-                # self.display_predictions(subsequence, outputs, 1)
+                 
+                #self.display_predictions(subsequence, outputs, 1)
 
                 # Zero Out Leftover Gradients
                 self.optimizer.zero_grad()
@@ -273,7 +277,10 @@ class YolotTrainer():
                 if self.global_rank == 0:
                     pbar.set_description(
                         f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:")
-                    self.tb_writer.add_scalar('Loss', loss, (epoch - 1) * len(self.dataloader) + seq_idx)
+                    self.tb_writer.add_scalar('Loss', loss, epoch_prog)
+                    self.tb_writer.add_scalar('diagnotics/LR', self.scheduler.get_lr(), epoch_prog)
+                    self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), epoch_prog)
+                    self.tb_writer.add_scalar('diagnostics/im_std', subsequence['img'].std(), epoch_prog)
                     pbar.refresh()
 
                 # Save checkpoint periodically
@@ -286,12 +293,8 @@ class YolotTrainer():
                             self.model.eval()
                             mini_metrics = self.mini_validator(model=self.model, fuse=False)
                             self.model.train()
-                    self.tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'],
-                                         (epoch - 1) * len(self.dataloader) + seq_idx)
-                    self.tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'],
-                                         (epoch - 1) * len(self.dataloader) + seq_idx)
-                    self.tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'],
-                                         (epoch - 1) * len(self.dataloader) + seq_idx)
+                    self.write_to_tb("mini_metrics", [], mini_metrics, epoch_prog, all=True)
+
                     if self.ddp:
                         self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
                                         epoch, seq_idx, loss, self.paths['run'], "mini_check.pt")
@@ -324,10 +327,7 @@ class YolotTrainer():
             # Validate
             if self.global_rank == 0:
                 metrics = self.validator(model=self.model)
-                self.tb_writer.add_scalar('mAP_50', metrics['metrics/mAP50(B)'], epoch)
-                self.tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
-                self.tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
-                self.tb_writer.add_scalar('metrics/recall(B)', metrics['metrics/recall(B)'], epoch)
+                self.write_to_tb("metrics", [], metrics, epoch, all=True)
                 # Save Best
                 if metrics['fitness'] >= best_metric:
                     print(f"Saving new best to {self.paths['model_save']}")
@@ -346,6 +346,16 @@ class YolotTrainer():
         # Evalutation
         print("Training Complete:)")
 
+    def write_to_tb(self, prefix, topics, data, iter, all=False):
+        if all:
+            keys = data.keys()
+        else:
+            keys = topics
+        for key in keys:
+            keyname = key.split("/")[-1]
+            self.tb_writer.add_scalar(f"{prefix}/{keyname}", data[key], iter)
+
+    
     def save_checkpoint(self, model_dict, opt_dict, epoch, itr, loss, save_path, save_name):
         metadata = {
             'epoch': epoch,
@@ -415,7 +425,7 @@ class YolotTrainer():
                     y2 = int((box[1] + 0.5 * box[3]) * h)
                     image = cv2.rectangle(image, (x1, y1), (x2, y2), color_pred, thickness=2)
 
-            cv2.imshow('Label Output', image*255)
+            cv2.imshow('Label Output', image)
             cv2.waitKey(1)
 
 
