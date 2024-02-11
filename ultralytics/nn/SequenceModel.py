@@ -25,7 +25,7 @@ class SequenceModel(DetectionModel):
         self.device = device
         #self.criterion = self.init_criterion()
 
-    def forward(self, x):
+    def forward(self, x, augnment=False):
         predictions, _ = self.process_sequence(x)
         return predictions
 
@@ -78,7 +78,6 @@ class SequenceModel(DetectionModel):
         self.device = device
         self.to(device)
         self.hidden_states_to(device)
-
 
     def get_hidden_states(self):
         # For each layer

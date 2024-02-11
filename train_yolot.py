@@ -3,14 +3,13 @@ This is a script intended for training YOLOT: A modified recurrent variant of YO
 Author: Dylan Baxter
 Created: 8/7/23
 '''
+import copy
 import datetime
 
 import cv2
 import torch
-from torch.cuda import amp
 import os
 import yaml
-import multiprocessing
 
 ''' Imports '''
 # Standard Library
@@ -19,31 +18,36 @@ from pathlib import Path
 # Package Imports
 # Local Imports
 from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
-from ultralytics.nn.tasks import parse_model, yaml_model_load
-from torch.utils.data import DataLoader
-from ultralytics.nn.tasks import DetectionModel
-from ultralytics.utils.loss import v8DetectionLoss
-from ultralytics.models.yolo.detect.train import DetectionTrainer
-from ultralytics.models.yolo.detect.val import SequenceValidator
+from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
 from ultralytics.cfg import ROOT
 from ultralytics.nn.SequenceModel import SequenceModel
 import torch.optim as opt
 from tqdm import tqdm
 from ultralytics.utils.ops import non_max_suppression
-from torchvision.transforms.functional import resize
 from torch.cuda.amp import autocast, GradScaler
 
 # Parallelization
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.multiprocessing as mp
 from ultralytics.data.build import InfiniteDataLoader
 from torch.optim.lr_scheduler import LambdaLR
 
 # Logging
 from tensorboard import program
 from torch.utils.tensorboard import SummaryWriter
+
+# Handle Cleanup
+from signal import *
+def cleanup(*args):
+    print("Cleaning Up...")
+    if 'tb_writer' in locals():
+        tb_writer.close()
+    if 'tb' in locals():
+        tb.kill()
+    dist.destroy_process_group()
+for sig in (SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM):
+    signal(sig, cleanup)
 
 # Profiling
 import cProfile
@@ -54,11 +58,10 @@ import pstats
 default_dataset_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
 default_model_path = "./model.pt"
 default_num_workers = 4
-DEBUG = False
 default_metric_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results"
 default_model_save_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training"
 default_model_load_path = "C:\\Users\\dylan\\Documents\\Data\\Models\\yolot_training\\yolot_test.pt"
-default_conf_path = "yolot_config.yaml"
+default_conf_path = "configs/yolot_config.yaml"
 
 local_rank = int(os.environ["LOCAL_RANK"])
 global_rank = int(os.environ["RANK"])
@@ -96,13 +99,13 @@ def main_func(args):
     if config_path:
         with open(config_path, 'r') as conf_file:
             conf = yaml.safe_load(conf_file)
-        model = conf['model']
+        model_name = conf['model']
         epochs = conf['epochs']
         dataset_path = conf['data']
         workers = conf['workers']
         #model_save_path = conf['model_save_path']
         metrics_save_path = conf['met_save_path']
-        #model_load_path = conf['pt_load_path']
+        model_load_path = conf['pt_load_path']
         visualize = conf['visualize']
         sequence_len = conf['seq_len']
         cls_gain = conf['cls']
@@ -120,32 +123,35 @@ def main_func(args):
 
     if global_rank == 0:
         # Create File structure for the run
-        # Read list of existing runs
-        dirs = os.listdir(metrics_save_path)
-        # If run directory already exists, look for checkpoint
-        if os.path.exists(os.path.join(metrics_save_path, run_name)):
-            # Look for checkpoint
-            print(f"Continuing Run: {run_name}")
-            if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
-                model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
-                print("Using previous checkpoint...")
-            else:
-                print("Starting model from scratch")
-            model_save_path = os.path.join(metrics_save_path, run_name, "weights")
-            model_save_name = "checkpoint.pth"
-            log_dir = os.path.join(metrics_save_path, run_name, "tb")
-        else:
-            # Create new file structure
-            print(f"Creating new run: {run_name}")
+        if not os.path.exists(os.path.join(metrics_save_path, run_name)):
             os.mkdir(os.path.join(metrics_save_path, run_name))
             os.mkdir(os.path.join(metrics_save_path, run_name, "weights"))
-            model_load_path = ""
-            model_save_path = os.path.join(metrics_save_path, run_name, "weights")
-            model_save_name = "checkpoint.pth"
-            os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
-            log_dir = os.path.join(metrics_save_path, run_name, "tb")
             os.mkdir(os.path.join(metrics_save_path, run_name, "other"))
+            os.mkdir(os.path.join(metrics_save_path, run_name, "tb"))
 
+    # If run directory already exists, look for checkpoint
+    if os.path.exists(os.path.join(metrics_save_path, run_name)):
+        # Look for checkpoint
+        print(f"Continuing Run: {run_name}")
+        if os.path.exists(os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")):
+            model_load_path = os.path.join(metrics_save_path, run_name, "weights", "checkpoint.pth")
+            print("Using previous checkpoint...")
+            continuing = True
+        else:
+            print("Starting model from scratch")
+            continuing = False
+        model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+        model_save_name = "checkpoint.pth"
+        log_dir = os.path.join(metrics_save_path, run_name, "tb")
+    else:
+        continuing = False
+        # Create new file structure
+        print(f"Creating new run: {run_name}")
+        model_save_path = os.path.join(metrics_save_path, run_name, "weights")
+        model_save_name = "checkpoint.pth"
+        log_dir = os.path.join(metrics_save_path, run_name, "tb")
+
+    if global_rank == 0:
         # Initialize Tensorboard
         dt = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         log_dir = os.path.join(log_dir, dt)
@@ -154,7 +160,6 @@ def main_func(args):
         url = tb.launch()
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
         tb_writer = SummaryWriter(log_dir=log_dir)
-
 
 
     # Setup Device
@@ -171,41 +176,58 @@ def main_func(args):
     torch.autograd.set_detect_anomaly(True)
     scaler = GradScaler(enabled=True)
 
+
     # Setup Dataloader
     if global_rank == 0:
         print("Building Dataset")
     # Create Datasets for Training and Validation
     training_dataset = BMOTSDataset(dataset_path, "train", device=device, seq_len=sequence_len)
     val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len)
+    mini_val_dataset = BMOTSDataset(dataset_path, "val", device=device, seq_len=sequence_len, data_cap=150)
     # Create Samplers for distributed processing
     train_sampler = DistributedSampler(training_dataset, shuffle=False,
                                        drop_last=False)
     val_sampler = DistributedSampler(val_dataset, shuffle=False,
                                        drop_last=False)
+    mini_val_sampler = DistributedSampler(mini_val_dataset, shuffle=False,
+                                     drop_last=False)
     # Use Datasets to Create Autoloader
     train_loader = InfiniteDataLoader(training_dataset, num_workers=workers, batch_size=1, shuffle=False,
                               collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=train_sampler)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=workers, batch_size=1, shuffle=False,
-                            collate_fn=collate_fn, drop_last=False, pin_memory=False, sampler=val_sampler)
+                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=val_sampler)
+    mini_val_loader = InfiniteDataLoader(mini_val_dataset, num_workers=workers, batch_size=1, shuffle=False,
+                                    collate_fn=single_batch_collate, drop_last=False, pin_memory=False, sampler=mini_val_sampler)
 
     # Initialize Model
-    model = SequenceModel(cfg=model, device=device, verbose=(local_rank==0))
+    model = SequenceModel(cfg=model_name, device=device, verbose=(local_rank==0))
     model.train()
     model.model_to(device)
+    model.to(device)
     ckpt = None
-    if os.path.exists(model_load_path):
+    if os.path.exists(model_load_path) and continuing:
         print(f"Loading model from {model_load_path}")
         ckpt = torch.load(model_load_path)
         model.load_state_dict(ckpt['model'], strict=False)
+    elif os.path.exists(model_load_path) and not continuing:
+        print(f"Loading model from {model_load_path}")
+        ckpt = torch.load(model_load_path)
+        model.load_state_dict(ckpt)
 
     print(f"Building parallel model with device: {torch.device(device)}")
     #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     print("model built")
 
+    # if global_rank == 0:
+    #     print("Building validator model: ")
+    #     val_model = SequenceModel(cfg=model_name, device=device, verbose=False).eval()
+    #     val_model.model_to(device)
+    #     print("Validator model complete")
+
     # Define Optimizer and Scheduler
     optimizer = opt.SGD(model.parameters(), lr=lr0, momentum=0.9)
-    if ckpt:
+    if ckpt and continuing:
         optimizer.load_state_dict(ckpt['optimizer'])
         for group in optimizer.param_groups:
             group['lr'] = lr0
@@ -221,31 +243,47 @@ def main_func(args):
     model.args.dfl = dfl_gain
 
     # Create Validator and make sure that model states are zeroed
-    validator = SequenceValidator(dataloader=val_loader, device='cpu')
-    validator.dataloader.sampler.set_epoch(0)
-    model.eval()
     model.module.zero_states()
-    #validator.validate(model)
+    if global_rank == 0:
+        validator = SequenceValidator2(dataloader=val_loader)
+        validator.dataloader.sampler.set_epoch(0)
+        mini_validator = SequenceValidator2(dataloader=mini_val_loader)
+        mini_epoch = 0
+        mini_validator.dataloader.sampler.set_epoch(mini_epoch)
+        print("Validating...")
+        # old_val = copy.deepcopy(model.module)
+        # val_model.train()
+        # val_model.load_state_dict(model.module.state_dict())
+
+        mini_validator(model=model.module)
+        model.train()
+        model.module.zero_states()
+        #compare_objects(old_val, model.module)
+    model.module.zero_states()
+    model.to(device)
+    model.module.model_to(device)
+    dist.barrier()
 
     # Main Training Loop
     model.train()
-    best_state = model.module.state_dict()
-    best_metric = 0
+    best_metric = 100000000
     loss = 0 # Arbitrary Starting Loss for Display
-    if ckpt:
+    if ckpt and continuing:
         starting_epoch = ckpt['metadata']['epoch']
         skipping = True
     else:
         starting_epoch = 1
         skipping = False
 
-
+    #dist.barrier()
+    print(f"RANK {global_rank} Starting training loop")
     for epoch in range(starting_epoch,epochs+1):
         # Make sure model is in training mode
         model.train()
         model.module.model_to(device)
         train_loader.sampler.set_epoch(epoch)
-        validator.dataloader.sampler.set_epoch(epoch)
+        if global_rank == 0:
+            validator.dataloader.sampler.set_epoch(epoch)
 
         # Set Up Loading bar for epoch
         bar_format = f"::Epoch {epoch}/{epochs}| {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
@@ -257,7 +295,7 @@ def main_func(args):
         save_counter = 0
         for seq_idx, subsequence in enumerate(pbar):
             # Skip iterations if checkpoint
-            if ckpt and ckpt['metadata']['iteration'] > seq_idx and skipping and ckpt['metadata']['iteration'] < num_seq-10:
+            if ckpt and continuing and ckpt['metadata']['iteration'] > seq_idx and skipping and ckpt['metadata']['iteration'] < num_seq-10:
                 pbar.set_description(
                     f"Seq:{seq_idx + 1}/{num_seq}, Skipping to idx{ckpt['metadata']['iteration']}:")
                 pbar.refresh()
@@ -292,11 +330,29 @@ def main_func(args):
 
             # Save checkpoint periodically
             if global_rank == 0 and save_counter > save_freq:
+                print("Validating...")
+                mini_validator.sampler.set_epoch(mini_epoch)
+                mini_epoch += 1
+                with torch.no_grad():
+                    # val_model = SequenceModel(cfg=model_name, device=device, verbose=False)
+                    # val_model.model_to(device)
+                    # sd = model.module.state_dict().copy()
+                    # val_model.load_state_dict(sd)
+                    model.eval()
+                    mini_metrics = mini_validator(model=model.module)
+                    # met = mini_validator(model=model.module, fuse=False)
+                tb_writer.add_scalar('mini_fitness', mini_metrics['fitness'], (epoch-1)*len(train_loader)+seq_idx)
+                tb_writer.add_scalar('mini_precision', mini_metrics['metrics/precision(B)'], (epoch-1)*len(train_loader)+seq_idx)
+                tb_writer.add_scalar('mini_recall', mini_metrics['metrics/recall(B)'], (epoch-1)*len(train_loader)+seq_idx)
                 save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
                                 epoch, seq_idx, loss, model_save_path, "mini_check.pt")
+                dist.barrier()
+
+            if save_counter > save_freq:
                 save_counter = 0
+                dist.barrier()
             else:
-                save_counter+=1
+                save_counter += 1
 
             # Exit early for debug
             if DEBUG and seq_idx >= seq_cap:
@@ -309,17 +365,17 @@ def main_func(args):
                             epoch, 0, loss, model_save_path, model_save_name)
 
         # Validate
-        model.eval()
-        metrics = validator.validate(model)
         if global_rank == 0:
-            tb_writer.add_scalar('mAP_50',metrics['map_50'], epoch)
-            #tb_writer.add_scalar('mAR', metrics['mar_100'], epoch)
-
-        # Save Best
-        if metrics['map_50'] >= best_metric and global_rank==0:
-            print(f"Saving new best to {model_save_path}")
-            save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
-                            epoch, 0, loss, model_save_path, "best.pth")
+            metrics = validator(model=model.module)
+            tb_writer.add_scalar('mAP_50',metrics['metrics/mAP50(B)'], epoch)
+            tb_writer.add_scalar('fitness', metrics['fitness'], epoch)
+            tb_writer.add_scalar('metrics/precision(B)', metrics['metrics/precision(B)'], epoch)
+            tb_writer.add_scalar('metrics/recall(B)', metrics['metrics/recall(B)'], epoch)
+            # Save Best
+            if metrics['fitness'] >= best_metric:
+                print(f"Saving new best to {model_save_path}")
+                save_checkpoint(model.module.state_dict(), optimizer.state_dict(),
+                                epoch, 0, loss, model_save_path, "best.pth")
 
         # Detach tensors
         scheduler.step()
@@ -375,6 +431,7 @@ def init_distributed():
     # Initialize Parallelization
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     os.environ['OMP_NUM_THREADS'] = "2"
+    torch.multiprocessing.set_sharing_strategy("file_system")
     dist.init_process_group(backend="gloo")
 
 def print_cuda_info():
@@ -394,6 +451,51 @@ def save_checkpoint(model_dict, opt_dict, epoch, itr, loss, save_path, save_name
         'metadata': metadata,
     }
     torch.save(save_obj, os.path.join(save_path, save_name))
+
+def compare_objects(obj1, obj2, attribute_name=''):
+    """
+    Recursively compare values of attributes in two objects and display the names of any that are not equal.
+
+    Parameters:
+    - obj1: The first object
+    - obj2: The second object
+    - attribute_name: The current attribute name in the recursive call (used for tracking nested attributes)
+    """
+    if type(obj1) != type(obj2):
+        print(f"Different types for attribute '{attribute_name}': {type(obj1)} vs {type(obj2)}")
+        return
+
+    if isinstance(obj1, (int, float, str, bool, type(None))):
+        # Compare basic types
+        if obj1 != obj2:
+            print(f"Difference in attribute '{attribute_name}': {obj1} vs {obj2}")
+
+    elif isinstance(obj1, torch.Tensor):
+        # Compare PyTorch tensors
+        if not torch.equal(obj1, obj2):
+            print(f"Difference in attribute '{attribute_name}': {obj1} vs {obj2}")
+
+    elif isinstance(obj1, list):
+        # Compare lists element-wise
+        for i, (item1, item2) in enumerate(zip(obj1, obj2)):
+            compare_objects(item1, item2, f"{attribute_name}[{i}]")
+
+    elif isinstance(obj1, dict):
+        # Compare dictionaries key-value pair-wise
+        for key in set(obj1.keys()) | set(obj2.keys()):
+            compare_objects(obj1.get(key), obj2.get(key), f"{attribute_name}.{key}")
+
+    elif hasattr(obj1, '__dict__'):
+        # Recursively compare attributes for objects with nested attributes
+        for attr_name in set(dir(obj1) + dir(obj2)):
+            if not attr_name.startswith('_'):
+                compare_objects(
+                    getattr(obj1, attr_name, None),
+                    getattr(obj2, attr_name, None),
+                    f"{attribute_name}.{attr_name}" if attribute_name else attr_name
+                )
+
+
 
 
 ''' Main Script'''
