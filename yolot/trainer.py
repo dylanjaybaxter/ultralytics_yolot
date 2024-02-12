@@ -28,7 +28,7 @@ import cProfile
 import pstats
 import cv2
 # YOLOT
-from yolot.yolot_val import SequenceValidator2
+from yolot.val import SequenceValidator2
 from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
 from yolot.SequenceModel import SequenceModel
 

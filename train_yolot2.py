@@ -1,5 +1,5 @@
 # Imports
-from yolot.yolot_trainer import YolotTrainer
+from yolot.trainer import YolotTrainer
 import argparse
 import yaml
 
