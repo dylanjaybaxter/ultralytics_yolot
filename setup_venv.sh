@@ -17,6 +17,7 @@ fi
 python3 -m venv "$venv_name"
 source "./$venv_name/bin/activate"
 
+echo "Installing pytorch..."
 if [ -n "$1" ]; then
     python3 -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu"${1}"
 else
@@ -24,6 +25,7 @@ else
 fi
 
 # Install Python dependencies
+echo "Installing other requirements..."
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 

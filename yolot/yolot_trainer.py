@@ -239,7 +239,7 @@ class YolotTrainer():
             for seq_idx, subsequence in enumerate(pbar):
                 # Update iteration counter
                 iteration = (epoch - 1) * len(self.dataloader) + seq_idx
-                epoch_prog = iteration/len(self.dataloader)
+                iteration = iteration/len(self.dataloader)
                 # Skip iterations if checkpoint
                 if self.ckpt and self.continuing and self.ckpt['metadata']['iteration'] > seq_idx and \
                         skipping and self.ckpt['metadata']['iteration'] < num_seq - 10:
@@ -277,10 +277,10 @@ class YolotTrainer():
                 if self.global_rank == 0:
                     pbar.set_description(
                         f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:")
-                    self.tb_writer.add_scalar('Loss', loss, epoch_prog)
-                    self.tb_writer.add_scalar('diagnotics/LR', self.scheduler.get_last_lr()[0], epoch_prog)
-                    self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), epoch_prog)
-                    self.tb_writer.add_scalar('diagnostics/im_std', subsequence['img'].std(), epoch_prog)
+                    self.tb_writer.add_scalar('Loss', loss, iteration)
+                    self.tb_writer.add_scalar('diagnostics/LR', self.scheduler.get_last_lr()[0], iteration)
+                    self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), iteration)
+                    self.tb_writer.add_scalar('diagnostics/im_std', subsequence['img'].std(), iteration)
                     pbar.refresh()
 
                 # Save checkpoint periodically
@@ -293,7 +293,7 @@ class YolotTrainer():
                             self.model.eval()
                             mini_metrics = self.mini_validator(model=self.model, fuse=False)
                             self.model.train()
-                    self.write_to_tb("mini_metrics", [], mini_metrics, epoch_prog, all=True)
+                    self.write_to_tb("mini_metrics", [], mini_metrics, iteration, all=True)
 
                     if self.ddp:
                         self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
