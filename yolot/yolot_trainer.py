@@ -238,7 +238,7 @@ class YolotTrainer():
             for seq_idx, subsequence in enumerate(pbar):
                 # Update iteration counter
                 iteration = (epoch - 1) * len(self.dataloader) + seq_idx
-                iteration = iteration/len(self.dataloader)
+                epoch_progress = iteration/len(self.dataloader)
                 # Skip iterations if checkpoint
                 if self.ckpt and self.continuing and self.ckpt['metadata']['iteration'] > seq_idx and \
                         skipping and self.ckpt['metadata']['iteration'] < num_seq - 10:
