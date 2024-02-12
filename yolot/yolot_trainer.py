@@ -217,7 +217,6 @@ class YolotTrainer():
 
         # dist.barrier()
         print(f"RANK {self.global_rank} Starting training loop")
-        iteration = 0
         for epoch in range(starting_epoch, self.epochs + 1):
             # Make sure model is in training mode
             self.model.train()
