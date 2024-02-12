@@ -12,9 +12,6 @@ import torch.optim as opt
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import LambdaLR
 # Ultralytics
-from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
-from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
-from ultralytics.nn.SequenceModel import SequenceModel
 from ultralytics.data.build import InfiniteDataLoader
 from ultralytics.utils.ops import non_max_suppression
 # Parallel
@@ -30,6 +27,10 @@ import atexit
 import cProfile
 import pstats
 import cv2
+# YOLOT
+from yolot.yolot_val import SequenceValidator2
+from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
+from yolot.SequenceModel import SequenceModel
 
 class YolotTrainer():
     def __init__(self, cfg=None):
@@ -278,7 +279,7 @@ class YolotTrainer():
                     pbar.set_description(
                         f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:")
                     self.tb_writer.add_scalar('Loss', loss, epoch_prog)
-                    self.tb_writer.add_scalar('diagnotics/LR', self.scheduler.get_lr(), epoch_prog)
+                    self.tb_writer.add_scalar('diagnotics/LR', self.scheduler.get_last_lr()[0], epoch_prog)
                     self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), epoch_prog)
                     self.tb_writer.add_scalar('diagnostics/im_std', subsequence['img'].std(), epoch_prog)
                     pbar.refresh()
