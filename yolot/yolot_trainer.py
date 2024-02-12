@@ -142,14 +142,13 @@ class YolotTrainer():
         model.train()
         model.model_to(self.device)
         ckpt = None
-        if os.path.exists(model_load) and self.continuing:
+        if os.path.exists(model_load):
             print(f"Loading model_load from {model_load}")
             self.ckpt = torch.load(model_load)
-            model.load_state_dict(self.ckpt['model_load'], strict=False)
-        elif os.path.exists(model_load) and not self.continuing:
-            print(f"Loading model_load from {model_load}")
-            self.ckpt = torch.load(model_load)
-            model.load_state_dict(self.ckpt)
+            if 'model' in self.ckpt:
+                model.load_state_dict(self.ckpt['model'], strict=False)
+            else:
+                model.load_state_dict(self.ckpt)
         else:
             self.ckpt = None
         print(f"Building parallel model_load with device: {torch.device(self.device)}")
