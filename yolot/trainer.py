@@ -258,7 +258,7 @@ class YolotTrainer():
                 # Warmup Logic
                 if self.nw > warmup_counter:
                     for idx, x in enumerate(self.optimizer.param_groups):
-                        x['lr'] = np.interp(warmup_counter, [0,self.nw], [0.1 if idx==0 else 0.0, self.lr0])
+                        x['lr'] = np.interp(warmup_counter, [0,self.nw], [0.0, self.lr0])
                         if "momentum" in x:
                             x["momentum"] = np.interp(warmup_counter, [0,self.nw], [self.warmup_momentum, self.momentum])
                     warmup = True
@@ -303,8 +303,7 @@ class YolotTrainer():
                     pbar.set_description(
                         f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:, W: {warmup}")
                     self.tb_writer.add_scalar('Loss', loss, iteration)
-                    self.tb_writer.add_scalar('diagnostics/LRG0', self.optimizer.param_groups[0]['lr'], iteration)
-                    self.tb_writer.add_scalar('diagnostics/LRG1', self.optimizer.param_groups[1]['lr'], iteration)
+                    self.tb_writer.add_scalar('diagnostics/LR', self.optimizer.param_groups[0]['lr'], iteration)
                     self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), iteration)
                     self.tb_writer.add_scalar('diagnostics/im_std', subsequence['img'].std(), iteration)
                     pbar.refresh()
