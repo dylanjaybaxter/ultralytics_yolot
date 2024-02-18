@@ -57,7 +57,7 @@ class YolotTrainer():
         self.lr0 = cfg['lr0']
         self.lrf = cfg['lrf']
         self.momentum = cfg['momentum']
-        self.warmup_momemtum = cfg['warmup_momentum']
+        self.warmup_momentum = cfg['warmup_momentum']
         self.nw = cfg['warmup_its']
         self.save_freq = cfg['save_freq']
         self.workers = cfg['workers']
