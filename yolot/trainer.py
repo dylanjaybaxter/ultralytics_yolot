@@ -123,9 +123,9 @@ class YolotTrainer():
             if 'metadata' in self.ckpt:
                 self.lr0= self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
                 print(f"Continuing with learning rate {self.lr0}")
-                for group in self.optimizer.param_groups:
-                    group['lr'] = self.lr0
         self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
+        for group in self.optimizer.param_groups:
+                    group['lr'] = self.lr0
         if self.ckpt is not None and self.continuing:
             # Load state of previous optimizer
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
@@ -303,7 +303,8 @@ class YolotTrainer():
                     pbar.set_description(
                         f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:, W: {warmup}")
                     self.tb_writer.add_scalar('Loss', loss, iteration)
-                    self.tb_writer.add_scalar('diagnostics/LR', self.scheduler.get_last_lr()[0], iteration)
+                    self.tb_writer.add_scalar('diagnostics/LRG0', self.optimizer.param_groups[0]['lr'], iteration)
+                    self.tb_writer.add_scalar('diagnostics/LRG1', self.optimizer.param_groups[1]['lr'], iteration)
                     self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), iteration)
                     self.tb_writer.add_scalar('diagnostics/im_std', subsequence['img'].std(), iteration)
                     pbar.refresh()
