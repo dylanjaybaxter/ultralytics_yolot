@@ -16,16 +16,16 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from ultralytics.data.build import InfiniteDataLoader
-from ultralytics.nn.SequenceModel import SequenceModel
-from ultralytics.data.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
+from yolot.SequenceModel import SequenceModel
+from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
 from ultralytics.utils.ops import non_max_suppression
-from ultralytics.models.yolo.detect.val import SequenceValidator, SequenceValidator2
+from yolot.val import SequenceValidator2
 
 
 # Defaults and Macros
-default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\pretrained_run1e.pt"
+default_model_path = "C:\\Users\\dylan\\Documents\\Data\\training_results\\yolot\\loss_fix\\weights\\last.pt"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
-default_vid_path = "val_test"
+default_vid_path = "loss_fix"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
 default_device = 0
 FRAME_RATE = 30
@@ -68,8 +68,8 @@ def main_func(args):
 
     # Create Validator
     #validator = SequenceValidator(val_loader, iou_thres=0.4, conf_thres=0.25, device=0, ddp=False)
-    validator = SequenceValidator2(dataloader=val_loader)
-    stats = validator(model=model)
+    #validator = SequenceValidator2(dataloader=val_loader)
+    #stats = validator(model=model)
 
     # Setup Video Writer
     if save_path:
@@ -101,23 +101,24 @@ def main_func(args):
             # Process Detections
             raw_dets = outputs[frame_idx][0]
             # NMS
-            dets = non_max_suppression(raw_dets, conf_thres=0.0001, iou_thres=0.5)
+            dets = non_max_suppression(raw_dets, conf_thres=0.8, iou_thres=0.3)
             print(f"Sequence {seq_idx}, Frame {frame_idx}: {dets[0].shape[0]} detections, {total_detections} total detections")
             for det_idx in range(dets[0].shape[0]):
+                print(dets[0][det_idx, :])
                 conf = dets[0][det_idx,4]
                 cls = dets[0][det_idx, 5]
                 x1 = int(dets[0][det_idx,0])
                 y1 = int(dets[0][det_idx,1])
-                w = int(dets[0][det_idx,2])
-                h = int(dets[0][det_idx,3])
-                x2 = x1+w
-                y2 = y1+h
-                cv2.rectangle(frame,(x1,y1,x2,y2), (0,255,0))
+                x2 = int(dets[0][det_idx,2])
+                y2 = int(dets[0][det_idx,3])
+                #x2 = x1+w
+                #y2 = y1+h
+                cv2.rectangle(frame,(x1,y1),(x2,y2), (0,255,0))
                 total_detections += 1
 
             # Show Image
             cv2.imshow("Predictions", frame)
-            cv2.waitKey(10)
+            cv2.waitKey(0)
 
     print("Inference Complete!")
 

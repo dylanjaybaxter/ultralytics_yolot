@@ -27,6 +27,8 @@ import atexit
 import cProfile
 import pstats
 import cv2
+import numpy as np
+
 # YOLOT
 from yolot.val import SequenceValidator2
 from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
@@ -37,6 +39,7 @@ class YolotTrainer():
         assert cfg is not None
         # Path and Port Config
         self.paths = {}
+        self.cfg = cfg
         self.paths['model_name'] = cfg['model']
         self.paths['data'] = cfg['data']
         self.paths['tb_dir'] = cfg['log_dir']
@@ -52,6 +55,10 @@ class YolotTrainer():
         self.gains['box'] = cfg['box']
         self.gains['dfl'] = cfg['dfl']
         self.lr0 = cfg['lr0']
+        self.lrf = cfg['lrf']
+        self.momentum = cfg['momentum']
+        self.warmup_momemtum = cfg['warmup_momentum']
+        self.nw = cfg['warmup_itrs']
         self.save_freq = cfg['save_freq']
         self.workers = cfg['workers']
         # Debug Settings
@@ -81,12 +88,12 @@ class YolotTrainer():
         if os.path.exists(self.paths['run']):
             # Look for checkpoint
             print(f"Continuing Run: {self.run_name}")
-            if os.path.exists(os.path.join(self.paths['run'], "weights", "checkpoint.pth")):
-                self.paths['model_load'] = os.path.join(self.paths['run'], "weights", "checkpoint.pth")
-                print("Using previous checkpoint...")
+            if os.path.exists(os.path.join(self.paths['run'], "weights", "last.pt")):
+                self.paths['model_load'] = os.path.join(self.paths['run'], "weights", "last.pt")
+                print(f"Using previous checkpoint: {self.paths['model_load']}")
                 self.continuing = True
             else:
-                print("Starting model from scratch")
+                print(f"Starting run from scratch with weights: {self.paths['model_load']}")
                 self.continuing = False
         else:
             self.continuing = False
@@ -111,12 +118,15 @@ class YolotTrainer():
         self.scaler = GradScaler(enabled=True)
         # Define Optimizer and Scheduler
         self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=0.9)
+        for group in self.optimizer.param_groups:
+            group['lr'] = self.lr0
+            if "momentum" in group:
+                group['momentum'] = self.momentum
+
         # If loading from a checkpoint, load the optimizer
         if self.ckpt is not None and self.continuing:
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
-            for group in self.optimizer.param_groups:
-                group['lr'] = self.lr0
-        lam1 = lambda epoch: (0.9 ** epoch)
+        lam1 = lambda epoch: max((0.9 ** epoch), cfg['lrf'])
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=[lam1])
 
         # Initialize Tensorboard
@@ -206,7 +216,7 @@ class YolotTrainer():
     def train_model(self):
         # Main Training Loop
         self.model.train()
-        best_metric = 100000000
+        best_metric = 0.
         loss = 0  # Arbitrary Starting Loss for Display
         if self.ckpt and self.continuing:
             starting_epoch = self.ckpt['metadata']['epoch']
@@ -238,10 +248,18 @@ class YolotTrainer():
             for seq_idx, subsequence in enumerate(pbar):
                 # Update iteration counter
                 iteration = (epoch - 1) * len(self.dataloader) + seq_idx
-                epoch_progress = iteration/len(self.dataloader)
+                # Warmup Logic
+                if self.nw > iteration:
+                    for idx, x in enumerate(self.optimizer.param_groups):
+                        x['lr'] = np.interp(iteration, [0,self.nw], [0.1 if idx==0 else 0.0, self.lr0])
+                        if "momentum" in x:
+                            x["momentum"] = np.interp(iteration, [0,self.nw], [self.warmup_momentum, self.momentum])
+                    warmup = True
+                else:
+                    warmup = False
                 # Skip iterations if checkpoint
-                if self.ckpt and self.continuing and self.ckpt['metadata']['iteration'] > seq_idx and \
-                        skipping and self.ckpt['metadata']['iteration'] < num_seq - 10:
+                if skipping and self.ckpt['metadata']['iteration'] > seq_idx and \
+                        self.ckpt['metadata']['iteration'] < num_seq - 10:
                     pbar.set_description(
                         f"Seq:{seq_idx + 1}/{num_seq}, Skipping to idx{self.ckpt['metadata']['iteration']}:")
                     pbar.refresh()
@@ -275,7 +293,7 @@ class YolotTrainer():
                 # Update Progress Bar
                 if self.global_rank == 0:
                     pbar.set_description(
-                        f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:")
+                        f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:, W{warmup}")
                     self.tb_writer.add_scalar('Loss', loss, iteration)
                     self.tb_writer.add_scalar('diagnostics/LR', self.scheduler.get_last_lr()[0], iteration)
                     self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), iteration)
@@ -315,13 +333,13 @@ class YolotTrainer():
 
             # Save Checkpoint
             if self.global_rank == 0:
-                print(f"Saving checkpoint to {os.path.join(self.paths['model_save'], self.paths['model_name'])}")
+                print(f"Saving checkpoint to {os.path.join(self.paths['model_save'], "last.pt")}")
                 if self.ddp:
                     self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
-                                    epoch, 0, loss, self.paths['model_save'], self.paths['model_name'])
+                                    epoch, 0, loss, self.paths['model_save'], "last.pt")
                 else:
                     self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
-                                         epoch, 0, loss, self.paths['model_save'], self.paths['model_name'])
+                                         epoch, 0, loss, self.paths['model_save'], "last.pt")
 
             # Validate
             if self.global_rank == 0:
@@ -336,6 +354,7 @@ class YolotTrainer():
                     else:
                         self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
                                              epoch, 0, loss, self.paths['model_save'], "best.pth")
+                    best_metric = metrics['fitness']
 
             # Detach tensors
             self.scheduler.step()

@@ -106,5 +106,41 @@ class RConv(nn.Module):
 
 
 
+'''
+Convolutional Gated Recurrent Unit based on https://github.com/jacobkimmel/pytorch_convgru/blob/master/convgru.py
+And adapted for use in yolot
+'''
+'''
+class ConvGRU(nn.Module):
+    def __init__(self, ch, input_size, hidden_size, k, b=1, device, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # Members
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        # Layers
+        self.reset = nn.Conv2d(input_size+hidden_size, hidden_size, kernel_size=k, padding=k//2)
+        self.update = nn.Conv2d(input_size+hidden_size, hidden_size, k, padding=k//2)
+        self.out = nn.Conv2d(input_size+hidden_size, hidden_size, k, padding=k//2)
+        self.bottleneck = nn.Conv2d(ch,ch+hidden_size, 1, padding=k//2)
+
+        # Hidden State
+        self.device = device
+        self.hidden_state = torch.zeros((b, hidden_size, hidden_size, hidden_size), requires_grad=True).to(self.device)
+
+        # Initialization
+        nn.init.orthogonal(self.reset.weight)
+        nn.init.orthogonal(self.update.weight)
+        nn.init.orthogonal(self.out)
+        nn.init.constant(self.reset.bias, 0.)
+        nn.init.constant(self.reset.bias, 0.)
+        nn.init.constant(self.reset.bias, 0.)
+    
+    def forward(self, x):
+
+        Conv GRU Function
+        Input Tensor x: (batch, ch, h, w)
+        Output:
+        '''
 
 
