@@ -117,17 +117,20 @@ class YolotTrainer():
         # Build Optimizer and Gradient Scaler
         self.scaler = GradScaler(enabled=True)
         # Define Optimizer and Scheduler
-        self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=0.9)
-        for group in self.optimizer.param_groups:
-            group['lr'] = self.lr0
-            if "momentum" in group:
-                group['momentum'] = self.momentum
+        self.lam1 = lambda epoch: max((0.9 ** epoch), self.lrf/self.lr0)
+        self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
+        if self.ckpt is not None and self.continuing:
+            # Load state of previous optimizer
+            self.optimizer.load_state_dict(self.ckpt['optimizer'])
+            # Reset learning rate
+            if self.ckpt['metadata']['epoch']:
+                lr = self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
+                print(f"Continuing with learning rate {lr}")
+                for group in self.optimizer.param_groups:
+                    group['lr'] = lr
 
         # If loading from a checkpoint, load the optimizer
-        if self.ckpt is not None and self.continuing:
-            self.optimizer.load_state_dict(self.ckpt['optimizer'])
-        lam1 = lambda epoch: max((0.9 ** epoch), cfg['lrf'])
-        self.scheduler = LambdaLR(self.optimizer, lr_lambda=[lam1])
+        self.scheduler = LambdaLR(self.optimizer, lr_lambda=[self.lam1])
 
         # Initialize Tensorboard
         self.tb_writer, self.tb_prog = self.init_tb(self.paths['tb_dir'], port=self.tb_port)
@@ -205,12 +208,12 @@ class YolotTrainer():
     def init_tb(self, path, port):
         # Initialize Tensorboard
         dt = datetime.now().strftime("%Y%m%d-%H%M%S")
-        log_dir = os.path.join(path, dt)
+        log_dir = path
         tb = program.TensorBoard()
         tb.configure(argv=[None, '--logdir', log_dir, '--port', str(port), '--bind_all'])
         url = tb.launch()
         print(f"Tensorboard started listening to {log_dir} and broadcasting on {url}")
-        tb_writer = SummaryWriter(log_dir=log_dir)
+        tb_writer = SummaryWriter(log_dir=os.path.join(path, dt))
         return tb_writer, tb
 
     def train_model(self):
@@ -227,6 +230,7 @@ class YolotTrainer():
 
         # dist.barrier()
         print(f"RANK {self.global_rank} Starting training loop")
+        warmup_counter = 0
         for epoch in range(starting_epoch, self.epochs + 1):
             # Make sure model is in training mode
             self.model.train()
@@ -249,12 +253,13 @@ class YolotTrainer():
                 # Update iteration counter
                 iteration = (epoch - 1) * len(self.dataloader) + seq_idx
                 # Warmup Logic
-                if self.nw > iteration:
+                if self.nw > warmup_counter:
                     for idx, x in enumerate(self.optimizer.param_groups):
                         x['lr'] = np.interp(iteration, [0,self.nw], [0.1 if idx==0 else 0.0, self.lr0])
                         if "momentum" in x:
                             x["momentum"] = np.interp(iteration, [0,self.nw], [self.warmup_momentum, self.momentum])
                     warmup = True
+                    warmup_counter += 1
                 else:
                     warmup = False
                 # Skip iterations if checkpoint
@@ -314,10 +319,12 @@ class YolotTrainer():
 
                     if self.ddp:
                         self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
-                                        epoch, seq_idx, loss, self.paths['run'], "mini_check.pt")
+                                        epoch, seq_idx, loss, self.optimizer.param_groups[0]['lr'], 
+                                        self.paths['run'], "mini_check.pt")
                     else:
                         self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
-                                             epoch, seq_idx, loss, self.paths['run'], "mini_check.pt")
+                                             epoch, seq_idx, loss, self.optimizer.param_groups[0]['lr'], 
+                                             self.paths['run'], "mini_check.pt")
 
                 if save_counter > self.save_freq:
                     save_counter = 0
@@ -336,10 +343,12 @@ class YolotTrainer():
                 print(f"Saving checkpoint to {os.path.join(self.paths['model_save'], 'last.pt')}")
                 if self.ddp:
                     self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
-                                    epoch, 0, loss, self.paths['model_save'], "last.pt")
+                                    epoch, 0, loss, self.optimizer.param_groups[0]['lr'],
+                                    self.paths['model_save'], "last.pt")
                 else:
                     self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
-                                         epoch, 0, loss, self.paths['model_save'], "last.pt")
+                                         epoch, 0, loss, self.optimizer.param_groups[0]['lr'], 
+                                         self.paths['model_save'], "last.pt")
 
             # Validate
             if self.global_rank == 0:
@@ -350,10 +359,12 @@ class YolotTrainer():
                     print(f"Saving new best to {self.paths['model_save']}")
                     if self.ddp:
                         self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
-                                        epoch, 0, loss, self.paths['model_save'], "best.pth")
+                                        epoch, 0, loss, self.optimizer.param_groups[0]['lr'], 
+                                        self.paths['model_save'], "best.pth")
                     else:
                         self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
-                                             epoch, 0, loss, self.paths['model_save'], "best.pth")
+                                             epoch, 0, loss, self.optimizer.param_groups[0]['lr'], 
+                                             self.paths['model_save'], "best.pth")
                     best_metric = metrics['fitness']
 
             # Detach tensors
@@ -374,11 +385,12 @@ class YolotTrainer():
             self.tb_writer.add_scalar(f"{prefix}/{keyname}", data[key], iter)
 
     
-    def save_checkpoint(self, model_dict, opt_dict, epoch, itr, loss, save_path, save_name):
+    def save_checkpoint(self, model_dict, opt_dict, epoch, itr, loss, lr, save_path, save_name):
         metadata = {
             'epoch': epoch,
             'iteration': itr,
             'loss': loss,
+            'lr': lr,
         }
         save_obj = {
             'model': model_dict,
