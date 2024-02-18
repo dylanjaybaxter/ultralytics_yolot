@@ -118,16 +118,17 @@ class YolotTrainer():
         self.scaler = GradScaler(enabled=True)
         # Define Optimizer and Scheduler
         self.lam1 = lambda epoch: max((0.9 ** epoch), self.lrf/self.lr0)
-        self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
+        # Reset learning rate
         if self.ckpt is not None and self.continuing:
-            # Load state of previous optimizer
-            self.optimizer.load_state_dict(self.ckpt['optimizer'])
-            # Reset learning rate
-            if self.ckpt['metadata']['epoch']:
+            if 'metadata' in self.ckpt:
                 self.lr0= self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
                 print(f"Continuing with learning rate {self.lr0}")
                 for group in self.optimizer.param_groups:
                     group['lr'] = self.lr0
+        self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
+        if self.ckpt is not None and self.continuing:
+            # Load state of previous optimizer
+            self.optimizer.load_state_dict(self.ckpt['optimizer'])
 
         # If loading from a checkpoint, load the optimizer
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=[self.lam1])
