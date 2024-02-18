@@ -124,10 +124,10 @@ class YolotTrainer():
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
             # Reset learning rate
             if self.ckpt['metadata']['epoch']:
-                lr = self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
-                print(f"Continuing with learning rate {lr}")
+                self.lr0= self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
+                print(f"Continuing with learning rate {self.lr0}")
                 for group in self.optimizer.param_groups:
-                    group['lr'] = lr
+                    group['lr'] = self.lr0
 
         # If loading from a checkpoint, load the optimizer
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=[self.lam1])
@@ -162,6 +162,8 @@ class YolotTrainer():
                 model.load_state_dict(self.ckpt['model'], strict=False)
             else:
                 model.load_state_dict(self.ckpt)
+            if 'metadata' in self.ckpt:
+                print(self.ckpt['metadata'])
         else:
             self.ckpt = None
         print(f"Building parallel model_load with device: {torch.device(self.device)}")
@@ -255,9 +257,9 @@ class YolotTrainer():
                 # Warmup Logic
                 if self.nw > warmup_counter:
                     for idx, x in enumerate(self.optimizer.param_groups):
-                        x['lr'] = np.interp(iteration, [0,self.nw], [0.1 if idx==0 else 0.0, self.lr0])
+                        x['lr'] = np.interp(warmup_counter, [0,self.nw], [0.1 if idx==0 else 0.0, self.lr0])
                         if "momentum" in x:
-                            x["momentum"] = np.interp(iteration, [0,self.nw], [self.warmup_momentum, self.momentum])
+                            x["momentum"] = np.interp(warmup_counter, [0,self.nw], [self.warmup_momentum, self.momentum])
                     warmup = True
                     warmup_counter += 1
                 else:
@@ -298,7 +300,7 @@ class YolotTrainer():
                 # Update Progress Bar
                 if self.global_rank == 0:
                     pbar.set_description(
-                        f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:, W{warmup}")
+                        f"Seq:{seq_idx + 1}/{num_seq}, Loss:{loss:.10e}, lr: {self.optimizer.param_groups[0]['lr']:.5e}:, W: {warmup}")
                     self.tb_writer.add_scalar('Loss', loss, iteration)
                     self.tb_writer.add_scalar('diagnostics/LR', self.scheduler.get_last_lr()[0], iteration)
                     self.tb_writer.add_scalar('diagnostics/im_max', subsequence['img'].max(), iteration)
