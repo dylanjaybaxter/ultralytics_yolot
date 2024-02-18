@@ -333,7 +333,7 @@ class YolotTrainer():
 
             # Save Checkpoint
             if self.global_rank == 0:
-                print(f"Saving checkpoint to {os.path.join(self.paths['model_save'], "last.pt")}")
+                print(f"Saving checkpoint to {os.path.join(self.paths['model_save'], 'last.pt')}")
                 if self.ddp:
                     self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
                                     epoch, 0, loss, self.paths['model_save'], "last.pt")
