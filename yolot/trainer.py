@@ -259,11 +259,12 @@ class YolotTrainer():
                 if self.nw > warmup_counter:
                     for idx, x in enumerate(self.optimizer.param_groups):
                         x['lr'] = np.interp(warmup_counter, [0,self.nw], [0.0, self.lr0])
-                        if "momentum" in x:
+                        if "momentum" in x: 
                             x["momentum"] = np.interp(warmup_counter, [0,self.nw], [self.warmup_momentum, self.momentum])
                     warmup = True
                     warmup_counter += 1
                 else:
+                    print("Exiting Warmup...")
                     warmup = False
                 # Skip iterations if checkpoint
                 if skipping and self.ckpt['metadata']['iteration'] > seq_idx and \
@@ -358,6 +359,7 @@ class YolotTrainer():
                 metrics = self.validator(model=self.model)
                 self.write_to_tb("metrics", [], metrics, epoch, all=True)
                 # Save Best
+                print(f"Comparing fitness({metrics['fitness']} to current best({best_metric}))...")
                 if metrics['fitness'] >= best_metric:
                     print(f"Saving new best to {self.paths['model_save']}")
                     if self.ddp:
