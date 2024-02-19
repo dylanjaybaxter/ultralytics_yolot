@@ -10,7 +10,7 @@ import torch.nn as nn
 from ultralytics.nn.modules import (AIFI, C1, C2, C3, C3TR, SPP, SPPF, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x,
                                     Classify, Concat, Conv, Conv2, ConvTranspose, Detect, DWConv, DWConvTranspose2d,
                                     Focus, GhostBottleneck, GhostConv, HGBlock, HGStem, Pose, RepC3, RepConv,
-                                    RTDETRDecoder, Segment, Rnn, AddRnn, RConv)
+                                    RTDETRDecoder, Segment, Rnn, AddRnn, RConv, ConvGRU)
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import v8ClassificationLoss, v8DetectionLoss, v8PoseLoss, v8SegmentationLoss
@@ -80,7 +80,7 @@ class BaseModel(nn.Module):
                 x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
             if profile:
                 self._profile_one_layer(m, x, dt)
-            if type(m) is RConv:
+            if type(m) is RConv or type(m) is ConvGRU:
                 x, hidden_state = m(x)
                 hidden_states.append(hidden_state)
             else:
@@ -723,6 +723,9 @@ def parse_model(d, ch, verbose=True, batch=1):  # model_dict, input_channels(3)
         elif m is AddRnn:
             c2 = ch[f]
         elif m is RConv:
+            args[0] = ch[f]
+            c2 = ch[f]
+        elif m is ConvGRU:
             args[0] = ch[f]
             c2 = ch[f]
         else:

@@ -19,14 +19,14 @@ backbone:
   - [-1, 3, C2f, [128, True]] # 2
   - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
   - [-1, 6, C2f, [256, True]] # 4
-  - [-1, 1, RConv, [256, 80, 3]] # 5-- Custom RConv Layer 1
+  - [-1, 1, ConvGRU, [256, 4, 3]] # 5-- Custom ConvGRU Layer 1
   - [4, 1, Conv, [512, 3, 2]]  # 6-P4/16
   - [-1, 6, C2f, [512, True]] # 7
-  - [-1, 1, RConv, [512, 40, 3]] # 8-- Custom RConv Layer 2
+  - [-1, 1, ConvGRU, [512, 4, 3]] # 8-- Custom ConvGRU Layer 2
   - [7, 1, Conv, [1024, 3, 2]]  # 9-P5/32
   - [-1, 3, C2f, [1024, True]] # 10
   - [-1, 1, SPPF, [1024, 5]]  # 11
-  - [-1, 1, RConv, [512, 20, 3]] # 12-- Custom RConv Layer 3
+  - [-1, 1, ConvGRU, [512, 4, 3]] # 12-- Custom ConvGRU Layer 3
 
 # YOLOv8.0n head
 head:

@@ -13,6 +13,7 @@ import torch.nn as nn
 from copy import deepcopy
 from .conv import Conv
 import torchvision.transforms.functional as tfunc
+import torch.nn.functional as func
 
 # Module Definitions
 class Rnn(nn.Module):
@@ -110,37 +111,67 @@ class RConv(nn.Module):
 Convolutional Gated Recurrent Unit based on https://github.com/jacobkimmel/pytorch_convgru/blob/master/convgru.py
 And adapted for use in yolot
 '''
-'''
+
 class ConvGRU(nn.Module):
-    def __init__(self, ch, input_size, hidden_size, k, b=1, device, *args, **kwargs) -> None:
+    def __init__(self, input_size, hidden_size, k, b=1, device='cpu', *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # Members
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.b = b
 
         # Layers
         self.reset = nn.Conv2d(input_size+hidden_size, hidden_size, kernel_size=k, padding=k//2)
         self.update = nn.Conv2d(input_size+hidden_size, hidden_size, k, padding=k//2)
         self.out = nn.Conv2d(input_size+hidden_size, hidden_size, k, padding=k//2)
-        self.bottleneck = nn.Conv2d(ch,ch+hidden_size, 1, padding=k//2)
+        self.bottleneck = nn.Conv2d(hidden_size, input_size, 1)
 
         # Hidden State
         self.device = device
-        self.hidden_state = torch.zeros((b, hidden_size, hidden_size, hidden_size), requires_grad=True).to(self.device)
+        self.hidden_state = None
 
         # Initialization
         nn.init.orthogonal(self.reset.weight)
         nn.init.orthogonal(self.update.weight)
-        nn.init.orthogonal(self.out)
+        nn.init.orthogonal(self.out.weight)
+        nn.init.orthogonal(self.bottleneck.weight)
         nn.init.constant(self.reset.bias, 0.)
         nn.init.constant(self.reset.bias, 0.)
         nn.init.constant(self.reset.bias, 0.)
+        nn.init.constant(self.bottleneck.bias, 0.)
     
     def forward(self, x):
-
+        '''
         Conv GRU Function
         Input Tensor x: (batch, ch, h, w)
         Output:
         '''
+        # Initialize Hidden State if Needed
+        if self.hidden_state is None:
+            self.spatial = x.data.size()[2:]
+            self.hidden_state = torch.zeros(
+                [self.b, self.hidden_size]+list(self.spatial), 
+                requires_grad=True).to(self.device)
+        
+        # Conv GRU Function
+        full_state = torch.cat([x, self.hidden_state], dim=1)
+        update_mask = func.sigmoid(self.update(full_state))
+        reset_mask = func.sigmoid(self.reset(full_state))
+        canidates = func.tanh(self.out(torch.cat([x,self.hidden_state*reset_mask], dim=1)))
+        self.hidden_state = canidates * update_mask + self.hidden_state * (1 - update_mask)
 
+        # Simple Reduction of output channels to match input channels
+        y = self.bottleneck(self.hidden_state)
+        return y, self.hidden_state
+
+    def get_hidden_states(self):
+        return self.hidden_state
+
+    def hidden_states_to(self, device):
+        self.device = device
+        if self.hidden_state is not None:
+            self.hidden_state = self.hidden_state.to(device)
+
+    def clear_hidden_states(self):
+        self.hidden_state = None
 

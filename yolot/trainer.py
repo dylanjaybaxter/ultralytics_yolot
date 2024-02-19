@@ -124,8 +124,7 @@ class YolotTrainer():
                 self.lr0= self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
                 print(f"Continuing with learning rate {self.lr0}")
         self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
-        for group in self.optimizer.param_groups:
-                    group['lr'] = self.lr0
+
         if self.ckpt is not None and self.continuing:
             # Load state of previous optimizer
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
@@ -222,6 +221,7 @@ class YolotTrainer():
     def train_model(self):
         # Main Training Loop
         self.model.train()
+        self.model.zero_states()
         best_metric = 0.
         loss = 0  # Arbitrary Starting Loss for Display
         if self.ckpt and self.continuing:
@@ -233,6 +233,7 @@ class YolotTrainer():
 
         # dist.barrier()
         print(f"RANK {self.global_rank} Starting training loop")
+        warmup= True
         warmup_counter = 0
         for epoch in range(starting_epoch, self.epochs + 1):
             # Make sure model is in training mode
@@ -261,9 +262,8 @@ class YolotTrainer():
                         x['lr'] = np.interp(warmup_counter, [0,self.nw], [0.0, self.lr0])
                         if "momentum" in x: 
                             x["momentum"] = np.interp(warmup_counter, [0,self.nw], [self.warmup_momentum, self.momentum])
-                    warmup = True
                     warmup_counter += 1
-                else:
+                elif warmup:
                     print("Exiting Warmup...")
                     warmup = False
                 # Skip iterations if checkpoint

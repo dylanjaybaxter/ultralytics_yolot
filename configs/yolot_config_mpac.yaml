@@ -19,7 +19,7 @@ visualize: False
 prof: False
 lr0: 0.01  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
 lrf: 0.0003  # (float) final learning rate (minimum)
-warmup_its: 2000
+warmup_its: 20000
 momentum: 0.937  # (float) SGD momentum/Adam beta1
 log_dir: ""
 log_port: 6006

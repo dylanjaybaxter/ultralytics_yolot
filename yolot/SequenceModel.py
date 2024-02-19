@@ -4,7 +4,7 @@ Author: Dylan Baxter
 '''
 import torch
 from ultralytics.nn.tasks import DetectionModel
-from ultralytics.nn.modules import RConv
+from ultralytics.nn.modules import RConv, ConvGRU
 from yolot.loss import SequenceLoss
 
 class Args(object):
@@ -61,7 +61,8 @@ class SequenceModel(DetectionModel):
         for layer in self.model:
             # If the layer is one with hidden states
             if type(layer) is RConv:
-                # Clear them
+                layer.clear_hidden_states()
+            elif type(layer) is ConvGRU:
                 layer.clear_hidden_states()
         return None
 
@@ -70,6 +71,8 @@ class SequenceModel(DetectionModel):
         for layer in self.model:
             # If the layer is one with hidden states
             if type(layer) is RConv:
+                layer.hidden_states_to(device)
+            if type(layer) is ConvGRU:
                 layer.hidden_states_to(device)
         return None
 
@@ -86,6 +89,7 @@ class SequenceModel(DetectionModel):
             if type(layer) is RConv:
                 hidden_states.append(layer.get_hidden_state())
         return hidden_states
+    
     def init_criterion(self):
         return SequenceLoss(self)
 

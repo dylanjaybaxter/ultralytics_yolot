@@ -8,9 +8,9 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 DEBUG: False
 met_save_path: "/mnt/c/Users/dylan/Documents/Data/yolot_training_results"
 model_save_path: "/mnt/c/Users/dylan/Documents/Data/Models/yolot_training"
-model_load_path: "/mnt/c/Users/dylan/Documents/ultralytics_yolot/yolot_pretrained.pt"
+model_load_path: "/mnt/c/Users/dylan/Documents/ultralytics_yolot/yolot_pretrained_GRU.pt"
 pt_load_path: "/mnt/c/Users/dylan/Documents/Data/Models/yolot_training/yolot_test.pt"
-run_name: "test"
+run_name: "test_GRU"
 seq_len: 3
 visualize: False
 prof: False
@@ -23,9 +23,10 @@ box: 7.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
 ddp: False
+warmup_its: 5
 
 # Train settings -------------------------------------------------------------------------------------------------------
-model: "yolov8Tn.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
+model: "yolov8Tn_GRU.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
 data:  "/mnt/c/Users/dylan/Documents/Data/BDD100k_MOT202/bdd100k" # (str, optional) path to data file, i.e. coco128.yaml
 epochs: 1  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training

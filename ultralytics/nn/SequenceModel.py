@@ -4,7 +4,8 @@ Author: Dylan Baxter
 '''
 
 from ultralytics.nn.tasks import DetectionModel
-from ultralytics.nn.modules import RConv
+from ultralytics.nn.modules import RConv, ConvGRU
+from ultralytics.utils.plotting import feature_visualization
 import torch
 
 
@@ -87,3 +88,35 @@ class SequenceModel(DetectionModel):
             if type(layer) is RConv:
                 hidden_states.append(layer.get_hidden_state())
         return hidden_states
+    
+    def _predict_once(self, x, profile=False, visualize=False):
+        """
+        Perform a forward pass through the network.
+
+        Args:
+            x (torch.Tensor): The input tensor to the model.
+            profile (bool):  Print the computation time of each layer if True, defaults to False.
+            visualize (bool): Save the feature maps of the model if True, defaults to False.
+
+        Returns:
+            (torch.Tensor): The last output of the model.
+        """
+        y, dt = [], []
+        hidden_states = [] # outputs
+        for m in self.model:
+            if m.f != -1:  # if not from previous layer
+                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+            if profile:
+                self._profile_one_layer(m, x, dt)
+            if type(m) is RConv or type(m) is ConvGRU:
+                x, hidden_state = m(x)
+                hidden_states.append(hidden_state)
+            else:
+                x = m(x)  # run
+            y.append(x if m.i in self.save else None)  # save output
+            if visualize:
+                feature_visualization(x, m.type, m.i, save_dir=visualize)
+        if len(hidden_states) == 0:
+            return x
+        else:
+            return x, hidden_states
