@@ -125,7 +125,8 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7
                 v = (4 / math.pi ** 2) * (torch.atan(w2 / h2) - torch.atan(w1 / h1)).pow(2)
                 with torch.no_grad():
                     alpha = v / ((1 - iou) + v + eps)
-                return 1/((1-iou) + (rho2 / c2) + (v * alpha))  # CIoU
+                ciou_loss = (1-iou) + (rho2 / c2) + (v * alpha) # ciou
+                return 1 - ciou_loss  # Inverted for positive alignment/overlap
             return iou - rho2 / c2  # DIoU
         c_area = cw * ch + eps  # convex area
         return iou - (c_area - union) / c_area  # GIoU https://arxiv.org/pdf/1902.09630.pdf
