@@ -23,12 +23,12 @@ from yolot.val import SequenceValidator2
 
 
 # Defaults and Macros
-default_model_path = "C:\\Users\\dylan\\Documents\\Data\\training_results\\yolot\\loss_fix\\weights\\last.pt"
+default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\best.pth"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
 default_vid_path = "loss_fix"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
 default_device = 0
-FRAME_RATE = 30
+FRAME_RATE = 5.0
 
 # Options Parser
 def init_parser():
@@ -52,7 +52,7 @@ def main_func(args):
 
 
     # Build Model
-    model = SequenceModel(cfg="yolov8Tn.yaml", device=0)
+    model = SequenceModel(cfg="yolov8Tn_GRU.yaml", device=0)
     model.eval()
     # Save Weights
     model.load_state_dict(torch.load(model_path)['model'])
@@ -73,7 +73,9 @@ def main_func(args):
 
     # Setup Video Writer
     if save_path:
-        writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), FRAME_RATE, sample_data['img'].shape[:-2])
+        writer = cv2.VideoWriter(os.path.join(save_path, "test_vid.mp4"), 
+                                 cv2.VideoWriter_fourcc(*'mp4v'), 
+                                 FRAME_RATE, (640, 640))
 
     # Compile
     acc = 0
@@ -81,11 +83,10 @@ def main_func(args):
     bar_format = f"::Validation | {{bar:30}}| {{percentage:.2f}}% | [{{elapsed}}<{{remaining}}] | {{desc}}"
     pbar_desc = f"Seq:.../..., Loss: {acc:.10e}, lr:{running_acc:.5e}"
     pbar = tqdm(val_loader, desc=pbar_desc, bar_format=bar_format, ascii=False)
-    num_seq = len(val_loader)
 
-    # Single Epoch Training Loop
-    save_counter = 0
+    # Iterate through the validation dataset
     total_detections = 0
+    model.zero_states()
     for seq_idx, subsequence in enumerate(pbar):
 
         sub_ims = subsequence['img']
@@ -101,7 +102,7 @@ def main_func(args):
             # Process Detections
             raw_dets = outputs[frame_idx][0]
             # NMS
-            dets = non_max_suppression(raw_dets, conf_thres=0.8, iou_thres=0.3)
+            dets = non_max_suppression(raw_dets, conf_thres=0.6, iou_thres=0.25)
             print(f"Sequence {seq_idx}, Frame {frame_idx}: {dets[0].shape[0]} detections, {total_detections} total detections")
             for det_idx in range(dets[0].shape[0]):
                 print(dets[0][det_idx, :])
@@ -118,7 +119,8 @@ def main_func(args):
 
             # Show Image
             cv2.imshow("Predictions", frame)
-            cv2.waitKey(0)
+            writer.write(frame)
+            cv2.waitKey(1)
 
     print("Inference Complete!")
 

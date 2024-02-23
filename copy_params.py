@@ -38,7 +38,7 @@ for i in range(len(target_layers)):
 
 
 # Save Model
-save_path = "yolot_pretrained_GRU.pt"
+save_path = "yolot_pretrained_GRU_big.pt"
 print(f"Saving Model as {save_path}")
 torch.save(model.state_dict(), save_path)
 

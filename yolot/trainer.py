@@ -347,11 +347,11 @@ class YolotTrainer():
                 print(f"Saving checkpoint to {os.path.join(self.paths['model_save'], 'last.pt')}")
                 if self.ddp:
                     self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
-                                    epoch, 0, loss, self.optimizer.param_groups[0]['lr'],
+                                    epoch+1, 0, loss, self.optimizer.param_groups[0]['lr'],
                                     self.paths['model_save'], "last.pt")
                 else:
                     self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
-                                         epoch, 0, loss, self.optimizer.param_groups[0]['lr'], 
+                                         epoch+1, 0, loss, self.optimizer.param_groups[0]['lr'], 
                                          self.paths['model_save'], "last.pt")
 
             # Validate
