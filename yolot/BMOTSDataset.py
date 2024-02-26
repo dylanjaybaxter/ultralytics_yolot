@@ -10,6 +10,7 @@ from torchvision.transforms import ToTensor, Resize
 import random
 from torchvision.io import read_image
 
+# BDD100k Classes
 class_dict = {
     "pedestrian": 0,
     "other person": 0,
@@ -22,6 +23,15 @@ class_dict = {
     "truck": 7,
     "other vehicle": 2,
     "trailer": 6
+}
+label_dict = {
+    0:"pedestrian",
+    1:"bicycle",
+    2:"car",
+    3:"motorcycle",
+    5:"bus",
+    6:"train",
+    7:"truck",
 }
 
 # Dataset object definition
