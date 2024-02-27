@@ -67,7 +67,7 @@ class SequenceModel(BaseModel):
 
         self.device = device
 
-    def forward(self, x, augnment=False):
+    def forward(self, x, augment=False, visualize=False, embed=False):
         predictions, _ = self.process_sequence(x)
         return predictions
     
