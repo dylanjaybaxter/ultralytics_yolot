@@ -6,7 +6,7 @@ import yaml
 # Parameter Parsing
 def init_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="./configs/yolot_config.yaml", help="Path to training config")
+    parser.add_argument("--config", type=str, default="./yolot/cfg/training/yolot_config.yaml", help="Path to training config")
     return parser
 
 def main_func(args):

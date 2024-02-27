@@ -56,6 +56,7 @@ class YolotTrainer():
         self.gains['dfl'] = cfg['dfl']
         self.lr0 = cfg['lr0']
         self.lrf = cfg['lrf']
+        self.red_factor = cfg['red_factor']
         self.momentum = cfg['momentum']
         self.warmup_momentum = cfg['warmup_momentum']
         self.nw = cfg['warmup_its']
@@ -67,6 +68,7 @@ class YolotTrainer():
         self.prof = cfg['prof']
         self.ddp = cfg['ddp']
         self.DEBUG = cfg['DEBUG']
+        self.overwrite = cfg['overwrite']
 
         # Setup Device
         mp.set_start_method('spawn')
@@ -88,7 +90,7 @@ class YolotTrainer():
         if os.path.exists(self.paths['run']):
             # Look for checkpoint
             print(f"Continuing Run: {self.run_name}")
-            if os.path.exists(os.path.join(self.paths['run'], "weights", "last.pt")):
+            if os.path.exists(os.path.join(self.paths['run'], "weights", "last.pt")) and not self.overwrite:
                 self.paths['model_load'] = os.path.join(self.paths['run'], "weights", "last.pt")
                 print(f"Using previous checkpoint: {self.paths['model_load']}")
                 self.continuing = True
@@ -117,7 +119,7 @@ class YolotTrainer():
         # Build Optimizer and Gradient Scaler
         self.scaler = GradScaler(enabled=True)
         # Define Optimizer and Scheduler
-        self.lam1 = lambda epoch: max((0.9 ** epoch), self.lrf/self.lr0)
+        self.lam1 = lambda epoch: max((self.red_factor ** epoch), self.lrf/self.lr0)
         # Reset learning rate
         if self.ckpt is not None and self.continuing:
             if 'metadata' in self.ckpt:
@@ -356,7 +358,9 @@ class YolotTrainer():
 
             # Validate
             if self.global_rank == 0:
-                metrics = self.validator(model=self.model)
+                with torch.no_grad():
+                    self.model.eval()
+                    metrics = self.validator(model=self.model)
                 self.write_to_tb("metrics", [], metrics, epoch, all=True)
                 # Save Best
                 print(f"Comparing fitness({metrics['fitness']} to current best({best_metric}))...")

@@ -1,12 +1,14 @@
-import ultralytics
 from ultralytics import YOLO
-from ultralytics.nn.SequenceModel import SequenceModel
-from ultralytics.nn.modules.rnn import RConv, ConvGRU
+from yolot.SequenceModel import SequenceModel
+from yolot.rnn import RConv, ConvGRU
 import torch
 
+scale = "m"
+postfix = ""
+save_path = f"yolot{postfix}{scale}_pretrained.pt"
 
-model = SequenceModel(cfg="yolov8Tn_GRU.yaml" , device='cpu', verbose=True)
-v8model = YOLO("yolov8n.pt")
+model = SequenceModel(cfg=f"cfg/models/yolot{postfix}{scale}.yaml" , device='cpu', verbose=True)
+v8model = YOLO(f"yolov8{scale}.pt")
 
 # Get
 source_layers = [layer for layer in v8model.model.modules()]
@@ -38,7 +40,6 @@ for i in range(len(target_layers)):
 
 
 # Save Model
-save_path = "yolot_pretrained_GRU_big.pt"
 print(f"Saving Model as {save_path}")
 torch.save(model.state_dict(), save_path)
 
