@@ -71,7 +71,7 @@ class SequenceModel(BaseModel):
         predictions, _ = self.process_sequence(x)
         return predictions
     
-    def _predict_once(self, x, profile=False, visualize=False):
+    def _predict_once(self, x, profile=False, visualize=False, embed=False):
         """
         Perform a forward pass through the network.
 
