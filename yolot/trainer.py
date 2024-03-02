@@ -30,7 +30,7 @@ import cv2
 import numpy as np
 
 # YOLOT
-from yolot.val import SequenceValidator2
+from yolot.val import SequenceValidator
 from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
 from yolot.SequenceModel import SequenceModel
 
@@ -205,7 +205,7 @@ class YolotTrainer():
     def build_validator(self, data_path, limit, seq_len):
         # Create Validator
         val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len)
-        validator = SequenceValidator2(dataloader=val_loader, save_dir=Path(self.paths['mini']))
+        validator = SequenceValidator(dataloader=val_loader, save_dir=Path(self.paths['mini']))
         validator.training = True
         return validator
 
