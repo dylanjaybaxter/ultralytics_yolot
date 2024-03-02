@@ -16,20 +16,17 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 import datetime
 
-from ultralytics.data.build import InfiniteDataLoader
 from yolot.SequenceModel import SequenceModel
-from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
 from ultralytics.utils.ops import non_max_suppression
-from yolot.val import SequenceValidator2
 from yolot.BMOTSDataset import class_dict, label_dict
 
 
 # Defaults and Macros
-default_model_path = ".\\gru_big_cells.pt"
+default_model_path = "big_cell_loss_red29.pt"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
-default_vid_path = "loss_fix"
+default_vid_path = "big_cell_loss_red29"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\inference_videos\\cropped_run.mp4"
-default_model_conf = "yolov8Tn_GRU_big.yaml"
+default_model_conf = "cfg/models/yolot_gru_bign.yaml"
 default_device = 0
 FRAME_RATE = 30.0
 
@@ -45,7 +42,7 @@ def init_parser():
     parser.add_argument('--device', type=int, default=default_device, help="device")
     parser.add_argument('--model_cfg', type=str, default=default_model_conf, help="model config")
     parser.add_argument('--iou', type=float, default=0.25)
-    parser.add_argument('--conf', type=float, default=0.5)
+    parser.add_argument('--conf', type=float, default=0.3)
     return parser
 
 # Main Func
@@ -83,44 +80,45 @@ def main_func(args):
     ret = True
     stop = False
     model.zero_states()
-    while ret and not stop:
+    while not stop:
         ret, im = cap.read()
-        im = cv2.resize(im, (640,640))
-        im_rgb = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        im_torch = torch.from_numpy(im_rgb.astype('float32')/255.0).permute(2, 0, 1).unsqueeze(0)
+        if ret:
+            im = cv2.resize(im, (640,640))
+            im_rgb = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+            im_torch = torch.from_numpy(im_rgb.astype('float32')/255.0).permute(2, 0, 1).unsqueeze(0)
 
-        start_time = datetime.datetime.now()
-        with torch.no_grad():
-            outputs = model(im_torch)
-        inf_time = datetime.datetime.now() - start_time
+            start_time = datetime.datetime.now()
+            with torch.no_grad():
+                outputs = model(im_torch)
+            inf_time = datetime.datetime.now() - start_time
 
-        for frame_idx in range(im_torch.shape[0]):
-            # Preprocess Frame for OpenCV
-            frame = im
-            # Process Detections
-            raw_dets = outputs[frame_idx][0]
-            # NMS
-            dets = non_max_suppression(raw_dets, conf_thres=nms_conf, iou_thres=nms_iou)
-            print(f"Frame {frame_idx}: {dets[0].shape[0]} detections, inf: {inf_time.microseconds/1000}")
-            for det_idx in range(dets[0].shape[0]):
-                conf = float(dets[0][det_idx,4])
-                cls = int(dets[0][det_idx, 5])
-                x1 = int(dets[0][det_idx,0])
-                y1 = int(dets[0][det_idx,1])
-                x2 = int(dets[0][det_idx,2])
-                y2 = int(dets[0][det_idx,3])
-                #x2 = x1+w
-                #y2 = y1+h
-                cv2.rectangle(frame,(x1,y1),(x2,y2), (0,255,0))
-                write_label(frame, x1, y1, f"{label_dict[cls]}:{conf:.2f}")
-                total_detections += 1
+            for frame_idx in range(im_torch.shape[0]):
+                # Preprocess Frame for OpenCV
+                frame = im
+                # Process Detections
+                raw_dets = outputs[frame_idx][0]
+                # NMS
+                dets = non_max_suppression(raw_dets, conf_thres=nms_conf, iou_thres=nms_iou)
+                print(f"Frame {frame_idx}: {dets[0].shape[0]} detections, inf: {inf_time.microseconds/1000}")
+                for det_idx in range(dets[0].shape[0]):
+                    conf = float(dets[0][det_idx,4])
+                    cls = int(dets[0][det_idx, 5])
+                    x1 = int(dets[0][det_idx,0])
+                    y1 = int(dets[0][det_idx,1])
+                    x2 = int(dets[0][det_idx,2])
+                    y2 = int(dets[0][det_idx,3])
+                    #x2 = x1+w
+                    #y2 = y1+h
+                    cv2.rectangle(frame,(x1,y1),(x2,y2), (0,255,0))
+                    write_label(frame, x1, y1, f"{label_dict[cls]}:{conf:.2f}")
+                    total_detections += 1
 
-            # Show Image
-            cv2.imshow("Predictions", frame)
-            writer.write(frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                stop = True
-                break
+                # Show Image
+                cv2.imshow("Predictions", frame)
+                writer.write(frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    stop = True
+                    break
         if cv2.waitKey(1) & 0xFF == ord('q'):
             stop = True
             break
