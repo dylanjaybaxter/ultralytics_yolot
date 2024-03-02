@@ -14,6 +14,7 @@ from ultralytics.utils.plotting import output_to_target, plot_images
 from ultralytics.utils.torch_utils import de_parallel, select_device
 from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.utils.checks import check_imgsz, check_requirements
+from ultralytics.utils import LOGGER, TQDM, callbacks, colorstr, emojis
 
 class SequenceValidator(DetectionValidator):
 
@@ -45,7 +46,7 @@ class SequenceValidator(DetectionValidator):
                 dnn=self.args.dnn,
                 data=self.args.data,
                 fp16=self.args.half,
-                fuse=False
+                fuse=fuse
             )
             # self.model = model
             self.device = model.device  # update device
