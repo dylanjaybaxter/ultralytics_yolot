@@ -144,8 +144,9 @@ class BMOTSDataset(Dataset):
                 im = self.resz(im)
                 # Store new size
                 resized_shapes.append(tuple(im.shape[1:]))
-                ratio_pads.append((resized_shapes[-1][0] / ori_sizes[-1][0],
-                                      resized_shapes[-1][1] / ori_sizes[-1][1]))
+                ratio_pads.append(
+                    ((resized_shapes[-1][0] / ori_sizes[-1][0], resized_shapes[-1][1] / ori_sizes[-1][1]),
+                    (0,0))) # No Padding
                 frames.append(im)
 
         # Create Tensor Stack of Output targets

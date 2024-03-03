@@ -29,6 +29,8 @@ import pstats
 import cv2
 import numpy as np
 
+from torchviz import make_dot
+
 # YOLOT
 from yolot.val import SequenceValidator
 from yolot.BMOTSDataset import BMOTSDataset, collate_fn, single_batch_collate
@@ -256,6 +258,7 @@ class YolotTrainer():
             # Single Epoch Training Loop
             save_counter = 0
             for seq_idx, subsequence in enumerate(pbar):
+                self.model.train()
                 # Update iteration counter
                 iteration = (epoch - 1) * len(self.dataloader) + seq_idx
                 # Warmup Logic
@@ -282,6 +285,7 @@ class YolotTrainer():
                     self.model.module.zero_states()
                 else:
                     self.model.zero_states()
+                
                 # Forward Pass
                 with autocast(enabled=False):
                     outputs = self.model(subsequence['img'].to(self.device))
@@ -290,8 +294,6 @@ class YolotTrainer():
                         loss = self.model.module.sequence_loss(outputs, subsequence)
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
-                 
-                #self.display_predictions(subsequence, outputs, 1)
 
                 # Zero Out Leftover Gradients
                 self.optimizer.zero_grad()
@@ -312,8 +314,9 @@ class YolotTrainer():
                     pbar.refresh()
 
                 # Save checkpoint periodically
-                if self.global_rank == 0 and save_counter > self.save_freq:
+                if self.global_rank == 0 and save_counter >= self.save_freq:
                     print("Validating...")
+
                     with torch.no_grad():
                         if self.ddp:
                             mini_metrics = self.mini_validator(model=self.model.module)
@@ -322,7 +325,6 @@ class YolotTrainer():
                             mini_metrics = self.mini_validator(model=self.model, fuse=False)
                             self.model.train()
                     self.write_to_tb("mini_metrics", [], mini_metrics, iteration, all=True)
-
                     if self.ddp:
                         self.save_checkpoint(self.model.module.state_dict(), self.optimizer.state_dict(),
                                         epoch, seq_idx, loss, self.optimizer.param_groups[0]['lr'], 
@@ -332,7 +334,7 @@ class YolotTrainer():
                                              epoch, seq_idx, loss, self.optimizer.param_groups[0]['lr'], 
                                              self.paths['run'], "mini_check.pt")
 
-                if save_counter > self.save_freq:
+                if save_counter >= self.save_freq:
                     save_counter = 0
                     if self.ddp:
                         dist.barrier()
@@ -467,7 +469,17 @@ class YolotTrainer():
             cv2.imshow('Label Output', image)
             cv2.waitKey(1)
 
-
+def check_gradients_for_nan(model):
+    for param in model.parameters():
+        if param.grad is not None:
+            if torch.isnan(param.grad).any():
+                print("NaN values detected in gradients!")
+                break
+            elif torch.isinf(param.grad).any():
+                print("Inf values detected in gradients!")
+                break
+        else:
+            print(f"None_Grad: {param.name} {param.requires_grad}")
 
 
 
