@@ -29,7 +29,7 @@ import pstats
 import cv2
 import numpy as np
 
-from torchviz import make_dot
+#from torchviz import make_dot
 
 # YOLOT
 from yolot.val import SequenceValidator
