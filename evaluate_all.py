@@ -42,7 +42,7 @@ def main(args):
     # Read in existing data
     summary_path = join(args.save, "summary.csv")
     if exists(summary_path):
-        summary = pd.read_csv(summary_path)
+        summary = pd.read_csv(summary_path, index_col=0)
     else:
         summary = pd.DataFrame()
     # Check for existing runs
@@ -64,7 +64,7 @@ def main(args):
                     }
                 )
                 break
-    print(f"Found {len(runs)} runs in {args.path}")
+    print(f"Found {len(runs)} runs in {args.path}, {len(existing_runs)} are already evaluated")
 
     # Initialize Validation Data
     dataset = BMOTSDataset(args.data,"val", device=0)
@@ -102,7 +102,6 @@ def main(args):
             metrics[f"meta/{k}"] = float(v)
         for k,v in last_metadata.items():
             metrics[f"meta_last/{k}"] = float(v)
-
         summary = update_dataframe(summary, metrics, run['name'])
     
     # Save Results
@@ -112,8 +111,8 @@ def main(args):
 
 def update_dataframe(df, data_dict, name):
     if name not in df.columns:
-        df_temp = pd.Series(data_dict, name=name)
-        df = df.append(df_temp)
+        df_temp = pd.DataFrame(data_dict, index=[name])
+        df = pd.concat([df, df_temp])
     else:
         print(f"Val Already Recorded For {name}")
     return df
