@@ -2,6 +2,7 @@
 # Usage: pip install -r requirements.txt
 
 # Base ----------------------------------------
+ultralytics
 matplotlib>=3.2.2
 numpy>=1.22.2 # pinned by Snyk to avoid a vulnerability
 opencv-python>=4.6.0
@@ -9,9 +10,11 @@ pillow>=7.1.2
 pyyaml>=5.3.1
 requests>=2.23.0
 scipy>=1.4.1
-torch>=1.8.0
-torchvision>=0.9.0
+# torch>=1.8.0
+# torchvision>=0.9.0
 tqdm>=4.64.0
+torchmetrics
+
 
 # Logging -------------------------------------
 # tensorboard>=2.13.0
@@ -45,3 +48,4 @@ py-cpuinfo  # display CPU info
 # roboflow
 torchmetrics # iou function
 pycocotools
+tensorboard
