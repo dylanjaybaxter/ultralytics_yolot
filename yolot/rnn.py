@@ -74,7 +74,7 @@ class RConv(nn.Module):
     def forward(self, x):
         # Pass input through convolutional layer
         x_conv = self.conv(x)
-        x_compressed = tfunc.resize(x_conv, self.hidden_size[3:])
+        x_compressed = tfunc.resize(x_conv, self.hidden_size[3:], antialias=True)
         # Create Output Tensor
         expanded = self.expand_tensors(self.hidden_states, x_conv.shape)
         y = torch.cat(expanded+[x_conv], dim=3)
@@ -102,7 +102,7 @@ class RConv(nn.Module):
     def expand_tensors(self, tensor_list, target_size):
         expanded = []
         for t in tensor_list:
-            expanded.append(tfunc.resize(t, target_size[3:]))
+            expanded.append(tfunc.resize(t, target_size[3:], antialias=True))
         return expanded
 
 

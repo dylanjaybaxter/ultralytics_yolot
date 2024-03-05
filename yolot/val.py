@@ -15,6 +15,7 @@ from ultralytics.utils.torch_utils import de_parallel, select_device
 from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.utils.checks import check_imgsz, check_requirements
 from ultralytics.utils import LOGGER, TQDM, callbacks, colorstr, emojis
+from yolot.BMOTSDataset import label_dict
 
 class SequenceValidator(DetectionValidator):
 
@@ -22,7 +23,7 @@ class SequenceValidator(DetectionValidator):
         """Initialize detection model with necessary variables and settings."""
         super().__init__(dataloader, save_dir, pbar, args, _callbacks)
     
-    def __call__(self, trainer=None, model=None, fuse=False):
+    def __call__(self, trainer=None, model=None, fuse=False, class_results=False):
         """
         Supports validation of a pre-trained model if passed or a model being trained
         if trainer is passed (trainer gets priority).
@@ -137,6 +138,14 @@ class SequenceValidator(DetectionValidator):
                 stats = self.eval_json(stats)  # update stats
             if self.args.plots or self.args.save_json:
                 LOGGER.info(f"Results saved to {colorstr('bold', self.save_dir)}")
+            if class_results:
+                for i, c in enumerate(self.metrics.ap_class_index):
+                    cls = label_dict[int(self.names[c])]
+                    p, r, map50, map95 = self.metrics.class_result(i)
+                    stats[f"{cls}/P"] = p
+                    stats[f"{cls}/R"] = r
+                    stats[f"{cls}/mAP50"] = map50
+                    stats[f"{cls}/mAP50-95"] = map95
             return stats
 
     def init_metrics(self, model):
@@ -153,6 +162,16 @@ class SequenceValidator(DetectionValidator):
         self.seen = 0
         self.jdict = []
         self.stats = dict(tp=[], conf=[], pred_cls=[], target_cls=[])
+    
+    def get_stats(self):
+        """Returns metrics statistics and results dictionary."""
+        stats = {k: torch.cat(v, 0).cpu().numpy() for k, v in self.stats.items()}  # to numpy
+        if len(stats) and stats["tp"].any():
+            self.metrics.process(**stats)
+        self.nt_per_class = np.bincount(
+            stats["target_cls"].astype(int), minlength=self.nc
+        )  # number of targets per class
+        return self.metrics.results_dict
     
     def enable_grad(self, model):
         for param in model.parameters():
