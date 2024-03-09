@@ -20,13 +20,15 @@ from yolot.SequenceModel import SequenceModel
 from ultralytics.utils.ops import non_max_suppression
 from yolot.BMOTSDataset import class_dict, label_dict
 
+from ultralytics import YOLO
+
 
 # Defaults and Macros
-default_model_path = "big_cell_loss_red29.pt"
+default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\med_gru\\weights\\best.pth"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
-default_vid_path = "big_cell_loss_red29"
-default_data_path = "C:\\Users\\dylan\\Documents\\Data\\inference_videos\\cropped_run.mp4"
-default_model_conf = "cfg/models/yolot_gru_bign.yaml"
+default_vid_path = "med_gru_11"
+default_data_path = "C:\\Users\\dylan\\Documents\\Data\\sample_videos\\1.mp4"
+default_model_conf = "cfg/models/yolot_gru_bigm.yaml"
 default_device = 0
 FRAME_RATE = 30.0
 
@@ -60,7 +62,7 @@ def main_func(args):
 
 
     # Build Model
-    model = SequenceModel(cfg=model_cfg, device=0)
+    model = SequenceModel(cfg=model_cfg, device=0, verbose=False)
     model.eval()
     # Load Weights
     model.load_state_dict(torch.load(model_path)['model'])

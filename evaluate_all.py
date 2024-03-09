@@ -29,7 +29,7 @@ known_configs = {
     'low_lr':           "yolot_gru_bign.yaml",
     'med_gru':          "yolot_gru_bigm.yaml",
     'mpac100':          "yolotn.yaml",
-}
+    "gru_cont":         "yolot_grun.yaml"}
 
 def init_parser():
     parser = argparse.ArgumentParser(description="Find folders containing 'best.pt' in a specified path.")

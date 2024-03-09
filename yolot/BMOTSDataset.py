@@ -36,7 +36,7 @@ label_dict = {
 
 # Dataset object definition
 class BMOTSDataset(Dataset):
-    def __init__(self, base_dir, split, seq_len=16, transform=None, input_size=[3,640,640], device='cpu', data_cap=None):
+    def __init__(self, base_dir, split, seq_len=16, transform=None, input_size=[3,640,640], device='cpu', data_cap=None, shuffle=True):
         '''
         Initializes dataset by storing paths to images and labels
         :param base_dir: The base directory of the dataset
@@ -92,8 +92,9 @@ class BMOTSDataset(Dataset):
                             break
                 else:
                     print(f"No label for video of ID {dir}")
-        random.seed(1)
-        random.shuffle(self.subsequence_keys)
+        if shuffle:
+            random.seed(1)
+            random.shuffle(self.subsequence_keys)
         print(f"Dataset constructed with {self.num_vids} videos, creating {self.num_sequences} "
               f"sequences of max size {self.max_sequence_length}")
 
