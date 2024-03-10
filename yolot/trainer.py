@@ -131,7 +131,7 @@ class YolotTrainer():
                 print(f"Continuing with learning rate {self.lr0}")
         
         #self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
-        self.optimizer = self.build_optimizer(self.model, name=self.cfg.optimizer, lr=self.lr0, momentum=self.momentum)
+        self.optimizer = self.build_optimizer(self.model, name=self.cfg['optimizer'], lr=self.lr0, momentum=self.momentum)
 
         if self.ckpt is not None and self.continuing:
             # Load state of previous optimizer
