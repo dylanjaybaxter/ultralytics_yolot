@@ -138,7 +138,7 @@ class YolotTrainer():
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
 
         # If loading from a checkpoint, load the optimizer
-        self.scheduler = LambdaLR(self.optimizer, lr_lambda=[self.lam1])
+        self.scheduler = LambdaLR(self.optimizer, lr_lambda=self.lam1)
 
         # Initialize Tensorboard
         self.tb_writer, self.tb_prog = self.init_tb(self.paths['tb_dir'], port=self.tb_port)
