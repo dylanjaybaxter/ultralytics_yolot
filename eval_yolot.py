@@ -26,12 +26,12 @@ from ultralytics import YOLO
 
 
 # Defaults and Macros
-default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\med_gru\\weights\\best_15e.pth"
+default_model_path = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\blank_check\\weights\\last.pt"
 default_base = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\test_run_big_data\\weights\\best.pt"
 default_save_dir = "C:\\Users\\dylan\\Documents\\Data\\yolot_training_results\\yolot\\val_runs"
-default_vid_name = "base_only.mp4"
+default_vid_name = "blank_check.mp4"
 default_data_path = "C:\\Users\\dylan\\Documents\\Data\\BDD100k_MOT202\\bdd100k"
-default_model_conf = "cfg/models/yolot_gru_bigm.yaml"
+default_model_conf = "cfg/models/yolotn.yaml"
 default_device = 0
 FRAME_RATE = 10.0
 
@@ -46,8 +46,8 @@ def init_parser():
     parser.add_argument('--data', type=str, default=default_data_path, help="Path to Dataset")
     parser.add_argument('--device', type=int, default=default_device, help="device")
     parser.add_argument('--model_cfg', type=str, default=default_model_conf, help="model config")
-    parser.add_argument('--iou', type=float, default=0.25)
-    parser.add_argument('--conf', type=float, default=0.3)
+    parser.add_argument('--iou', type=float, default=0.45)
+    parser.add_argument('--conf', type=float, default=0.25)
     return parser
 
 # Main Func
@@ -141,17 +141,17 @@ def main_func(args):
                 write_label(frame, x1, y1,x2,y2, f"{label_dict[cls]}", color=(100, 100, 100), mode='ct')
                 total_detections += 1
             
-            # # Display Detections
-            # for det_idx in range(dets[0].shape[0]):
-            #     conf = float(dets[0][det_idx,4])
-            #     cls = int(dets[0][det_idx, 5])
-            #     x1 = int(dets[0][det_idx,0])
-            #     y1 = int(dets[0][det_idx,1])
-            #     x2 = int(dets[0][det_idx,2])
-            #     y2 = int(dets[0][det_idx,3])
-            #     cv2.rectangle(frame,(x1,y1),(x2,y2), (0,255,0), thickness=3)
-            #     write_label(frame, x1, y1,x2,y2, f"{label_dict[cls]}:{conf:.2f}")
-            #     total_detections += 1
+            # Display Detections
+            for det_idx in range(dets[0].shape[0]):
+                conf = float(dets[0][det_idx,4])
+                cls = int(dets[0][det_idx, 5])
+                x1 = int(dets[0][det_idx,0])
+                y1 = int(dets[0][det_idx,1])
+                x2 = int(dets[0][det_idx,2])
+                y2 = int(dets[0][det_idx,3])
+                cv2.rectangle(frame,(x1,y1),(x2,y2), (0,255,0), thickness=3)
+                write_label(frame, x1, y1,x2,y2, f"{label_dict[cls]}:{conf:.2f}")
+                total_detections += 1
             
             # Display Baseline
             base_boxes = bdets[0].boxes.xyxy.to(int)
