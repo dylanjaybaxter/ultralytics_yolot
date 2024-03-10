@@ -493,7 +493,7 @@ class YolotTrainer():
         """
 
         g = [], [], []  # optimizer parameter groups
-        bn = tuple(v for k, v in nn.__dict__.items() if "Norm" in k)  # normalization layers, i.e. BatchNorm2d()
+        bn = tuple(v for k, v in torch.nn.__dict__.items() if "Norm" in k)  # normalization layers, i.e. BatchNorm2d()
         if name == "auto":
             LOGGER.info(
                 f"{colorstr('optimizer:')} 'optimizer=auto' found, "
