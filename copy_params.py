@@ -3,8 +3,8 @@ from yolot.SequenceModel import SequenceModel
 from yolot.rnn import RConv, ConvGRU
 import torch
 
-scale = "m"
-postfix = ""
+scale = "l"
+postfix = "_gru_big"
 save_path = f"yolot{postfix}{scale}_pretrained.pt"
 
 model = SequenceModel(cfg=f"cfg/models/yolot{postfix}{scale}.yaml" , device='cpu', verbose=True)
