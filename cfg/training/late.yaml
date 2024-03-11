@@ -26,7 +26,7 @@ momentum: 0.937  # (float) SGD momentum/Adam beta1
 log_dir: ""
 log_port: 6006
 seq_cap: 2000
-save_freq: 5000
+save_freq: 10000
 box: 7.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
