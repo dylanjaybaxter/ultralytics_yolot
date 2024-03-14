@@ -5,10 +5,14 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import os
 from os import path
+from datetime import datetime
 from PIL import Image
 from torchvision.transforms import ToTensor, Resize
 import random
 from torchvision.io import read_image
+from ultralytics.data.augment import RandomHSV, RandomPerspective, RandomFlip, Compose
+import numpy as np
+import cv2
 
 # BDD100k Classes
 class_dict = {
@@ -36,7 +40,9 @@ label_dict = {
 
 # Dataset object definition
 class BMOTSDataset(Dataset):
-    def __init__(self, base_dir, split, seq_len=16, transform=None, input_size=[3,640,640], device='cpu', data_cap=None, shuffle=True):
+    def __init__(self, base_dir, split, seq_len=16, 
+                 input_size=[3,640,640], device='cpu', data_cap=None, shuffle=True, 
+                 border=0, aug=False, drop=0.0, args=None):
         '''
         Initializes dataset by storing paths to images and labels
         :param base_dir: The base directory of the dataset
@@ -48,11 +54,28 @@ class BMOTSDataset(Dataset):
         nv - number of videos
         '''
         self.base_dir = base_dir
-        self.transform = transform
         self.input_size = input_size
         self.resz = Resize(input_size[1:], antialias=True)
         self.max_sequence_length = seq_len
         self.device = device
+        self.border = border
+        self.aug = aug
+        self.drop = drop
+        
+        # Setup Augmentation
+        if args == None:
+            self.perspective = RandomPerspective(degrees=0.3, translate=0.3, scale=0.5, shear=0.3, perspective=0.001)
+            self.perspective.size = (int(input_size[1]+border), int(input_size[2]+border))
+            self.hgain = 0.015
+            self.sgain = 0.7
+            self.vgain = 0.4
+        else:
+            self.perspective = RandomPerspective(degrees=args['degrees'], translate=args['translate'], 
+                                                 scale=args['scale'], shear=args['shear'], perspective=args['perspective'])
+            self.perspective.size = (int(input_size[1]+border), int(input_size[2]+border))
+            self.hgain = args['hsv_h']
+            self.sgain = args['hsv_s']
+            self.vgain = args['hsv_v']
 
         # Find and store video paths and subsequence indicies along with labels
         self.video_dir = path.join(base_dir, "images", "track", split)
@@ -135,9 +158,6 @@ class BMOTSDataset(Dataset):
             if filename.endswith(".jpg"):
                 im_paths.append(filename)
                 im = read_image(path.join(video_path, filename))/255.0
-                # Apply Transforms
-                if self.transform:
-                    im = self.transform(im)
 
                 # Store original size
                 ori_sizes.append(tuple(im.shape[1:]))
@@ -152,6 +172,30 @@ class BMOTSDataset(Dataset):
 
         # Create Tensor Stack of Output targets
         label_path = path.join(self.label_dir, seq_id+".json")
+
+        # Apply Augmentations
+        if self.aug:
+            seed = datetime.now().timestamp()
+            tframes = []
+            tfs = []
+            scales = []
+            for i, frame in enumerate(frames):
+                # Set Seed
+                random.seed(seed)
+                # Transform Images
+                # HSV
+                hsv_frame = self.augment_hsv(frame, seed)
+                # Affine
+                tim, m, s = self.perspective.affine_transform(hsv_frame,(self.border, self.border))
+                # Append results
+                tfs.append(m)
+                scales.append(s)
+                frames[i] = torch.Tensor(tim/255.0).movedim(-1,0)
+        
+        # Apply Random frame dropout after 5halfway through the clip
+        for i in range(int(len(frames)/2), len(frames)):
+            if random.random() < self.drop:
+                frames[i] = torch.ones(self.input_size)*125.
 
         # Read in label json
         with open(label_path, 'r') as label_file:
@@ -175,22 +219,31 @@ class BMOTSDataset(Dataset):
                 else:
                     cat_id = class_dict[cat]
                 # Retrieve detection box information and calculate box center+dimensions
-                x1 = int(detection["box2d"]["x1"])
-                x2 = int(detection["box2d"]["x2"])
-                y1 = int(detection["box2d"]["y1"])
-                y2 = int(detection["box2d"]["y2"])
-                w = abs(x2 - x1)
-                h = abs(y2 - y1)
-                cx = x1 + abs(x1 - x2) / 2
-                cy = y1 + abs(y1 - y2) / 2
+                x1 = (detection["box2d"]["x1"]/im_w*self.input_size[1])
+                x2 = (detection["box2d"]["x2"]/im_w*self.input_size[1])
+                y1 = (detection["box2d"]["y1"]/im_h*self.input_size[2])
+                y2 = (detection["box2d"]["y2"]/im_h*self.input_size[2])
+                box_xyxy = np.array([x1,y1,x2,y2]).astype(float)
+                if self.aug:
+                    box_xyxy = torch.tensor(self.perspective.apply_bboxes(np.expand_dims(box_xyxy, 0), tfs[frame_id])[0])
+                else:
+                    box_xyxy = torch.tensor(box_xyxy)
+                box_xyxy.clamp_(0,self.input_size[2])
+
+                w = abs(box_xyxy[2] - box_xyxy[0])
+                h = abs(box_xyxy[3] - box_xyxy[1])
+                cx = box_xyxy[0] + abs(box_xyxy[2] - box_xyxy[0]) / 2
+                cy = box_xyxy[1] + abs(box_xyxy[3] - box_xyxy[1]) / 2
 
                 # Append extracted data to a list
-                cls_ids.append(torch.tensor(cat_id))
-                if not all( i <= 1 for i in  [cx/im_w,cy/im_h,w/im_w,h/im_h]):
-                    print("Bad value detected")
+                box = torch.tensor([cx/self.input_size[1],cy/self.input_size[2],w/self.input_size[1],h/self.input_size[2]])
+                if not (w==0 or h==0):
+                    bboxes.append(box.clamp_(0,1))
+                    cls_ids.append(torch.tensor(cat_id))
+                    frame_ids.append(torch.tensor(frame_id))
 
-                bboxes.append(torch.tensor([cx/im_w,cy/im_h,w/im_w,h/im_h]))
-                frame_ids.append(torch.tensor(frame_id))
+        # Get Bounding Boxes
+        #tboxes = torch.Tensor(self.perspective.apply_bboxes(torch.stack(bboxes, dim=0).numpy()*640, m)).to(self.device) / 640
 
         sample = {}
         sample['im_file'] = tuple(im_paths)
@@ -199,7 +252,7 @@ class BMOTSDataset(Dataset):
         sample['img'] = torch.stack(frames, dim=0).to(self.device)
         if cls_ids:
             sample['cls'] = torch.stack(cls_ids, dim=0).view(-1, 1).to(self.device)
-            sample['bboxes'] = torch.stack(bboxes, dim=0).to(self.device)
+            sample['bboxes'] = torch.Tensor(torch.stack(bboxes, dim=0)).to(self.device)
             sample['frame_idx'] = torch.stack(frame_ids).to(self.device)
         else:
             sample['cls'] = torch.Tensor([]).to(self.device)
@@ -209,9 +262,28 @@ class BMOTSDataset(Dataset):
         sample['ratio_pad'] = ratio_pads
 
         return sample
+    
+    def augment_hsv(self, img, seed=0):
+        '''Modified from ultralytics.data.augment.py RandomHSV'''
+        img_np = (img.movedim(0,-1).numpy()*255).astype(np.uint8)
+        np.random.seed(int(seed))
+        r = np.random.uniform(-1, 1, 3) * [self.hgain, self.sgain, self.vgain] + 1  # random gains
+        hue, sat, val = cv2.split(cv2.cvtColor(img_np, cv2.COLOR_RGB2HSV))
+        dtype = img_np.dtype  # uint8
+
+        x = np.arange(0, 256, dtype=r.dtype)
+        lut_hue = ((x * r[0]) % 180).astype(dtype)
+        lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
+        lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
+
+        im_hsv = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
+        img_np = cv2.cvtColor(im_hsv, cv2.COLOR_HSV2RGB) 
+        return img_np
 
 def collate_fn(batch):
     return batch
 
 def single_batch_collate(batch):
     return batch[0]
+
+

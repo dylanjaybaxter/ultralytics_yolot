@@ -114,7 +114,7 @@ class YolotTrainer():
 
         # Build Dataloader
         self.dataloader = self.build_dataloader(data_path=self.paths['data'], split="train",
-                                                data_cap=100000, seq_len=self.sequence_len)
+                                                data_cap=100000, seq_len=self.sequence_len, aug=cfg["aug"], drop=cfg["drop"], args=cfg)
 
         # Build validators
         self.validator = self.build_validator(data_path=self.paths['data'], limit=100000, seq_len=6)
@@ -189,12 +189,15 @@ class YolotTrainer():
 
         return model
 
-    def build_dataloader(self, data_path, split, data_cap, seq_len):
+    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, drop=0.0, args=None):
         # Create Datasets for Training and Validation
         dataset = BMOTSDataset(data_path, split,
                                device=self.device,
                                seq_len=seq_len,
-                               data_cap=data_cap)
+                               data_cap=data_cap,
+                               aug=aug,
+                               drop=drop,
+                               args=args)
         # Create Samplers for distributed processing
         if self.ddp:
             sampler = DistributedSampler(dataset, shuffle=False,
@@ -497,7 +500,7 @@ class YolotTrainer():
         if name == "auto":
             LOGGER.info(
                 f"{colorstr('optimizer:')} 'optimizer=auto' found, "
-                f"ignoring 'lr0={self.args.lr0}' and 'momentum={self.args.momentum}' and "
+                f"ignoring 'lr0={self.cfg.lr0}' and 'momentum={self.cfg.momentum}' and "
                 f"determining best 'optimizer', 'lr0' and 'momentum' automatically... "
             )
             nc = getattr(model, "nc", 10)  # number of classes

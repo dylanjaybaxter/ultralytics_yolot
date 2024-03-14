@@ -26,6 +26,9 @@ cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
 ddp: False
 warmup_its: 5
+aug: True
+drop: 0.1
+optimizer: AdamW  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: "./cfg/models/yolot_gru_bigm.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
@@ -38,10 +41,9 @@ save: True  # (bool) save train checkpoints and predict results
 save_period: -1 # (int) Save checkpoint every x epochs (disabled if < 1)
 cache: False  # (bool) True/ram, disk or False. Use cache for data loading
 device: 0 # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
-workers: 2  # (int) number of worker threads for data loading (per RANK if DDP)
+workers: 0  # (int) number of worker threads for data loading (per RANK if DDP)
 exist_ok: False  # (bool) whether to overwrite existing experiment
 pretrained: True  # (bool | str) whether to use a pretrained model (bool) or a model to load weights from (str)
-optimizer: auto  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
 verbose: True  # (bool) whether to print verbose output
 seed: 0  # (int) random seed for reproducibility
 deterministic: True  # (bool) whether to enable deterministic mode
