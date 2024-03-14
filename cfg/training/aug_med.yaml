@@ -12,8 +12,8 @@ epochs: 100  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
 met_save_path: "/datasets/BDD100k/results"
 model_save_path: "/datasets/BDD100k/results"
-model_load_path: "/datasets/BDD100k/pretrained/yolot_gru_bigm_pretrained.pt"
-run_name: "late"
+model_load_path: "/datasets/BDD100k/results/med_gru/weights/best.pth"
+run_name: "aug_med"
 overwrite: False
 seq_len: 16
 visualize: False
