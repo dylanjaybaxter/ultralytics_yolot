@@ -195,7 +195,7 @@ class BMOTSDataset(Dataset):
         # Apply Random frame dropout after 5halfway through the clip
         for i in range(int(len(frames)/2), len(frames)):
             if random.random() < self.drop:
-                frames[i] = torch.ones(self.input_size)*125.
+                frames[i] = torch.ones(self.input_size)*0.5
 
         # Read in label json
         with open(label_path, 'r') as label_file:
