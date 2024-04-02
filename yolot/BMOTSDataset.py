@@ -249,9 +249,9 @@ class BMOTSDataset(Dataset):
                 resized_shapes.append(resized_shapes[-1])
                 ratio_pads.append(ratio_pads[-1])
                 frames.append(frames[-1])
-                bboxes.append(bboxes[-1])
-                cls_ids.append(cls_ids[-1])
-                frame_ids.append(frame_ids[-1])
+                bboxes.append(bboxes[frame_ids==frame_ids[-1]])
+                cls_ids.append(cls_ids[frame_ids==frame_ids[-1]])
+                frame_ids.append(frame_ids[frame_ids==frame_ids[-1]])
 
 
         sample = {}
