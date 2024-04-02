@@ -15,7 +15,7 @@ model_save_path: "/datasets/BDD100k/results"
 model_load_path: "/datasets/BDD100k/results/late/weights/best.pth"
 run_name: "late_b4"
 overwrite: False
-seq_len: 16
+seq_len: 8
 visualize: False
 prof: False
 lr0: 0.001  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
@@ -31,7 +31,7 @@ box: 7.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
 ddp: False
-workers: 5  # (int) number of worker threads for data loading (per RANK if DDP)
+workers: 4  # (int) number of worker threads for data loading (per RANK if DDP)
 device: 0  # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 optimizer: AdamW  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
 # Augmentation
