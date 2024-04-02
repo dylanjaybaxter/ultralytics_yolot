@@ -13,7 +13,7 @@ patience: 50  # (int) epochs to wait for no observable improvement for early sto
 met_save_path: "/datasets/BDD100k/results"
 model_save_path: "/datasets/BDD100k/results"
 model_load_path: "/datasets/BDD100k/results/late/weights/best.pth"
-run_name: "aug_drop_late"
+run_name: "late_b4"
 overwrite: False
 seq_len: 16
 visualize: False
