@@ -73,6 +73,7 @@ class YolotTrainer():
         self.ddp = cfg['ddp']
         self.DEBUG = cfg['DEBUG']
         self.overwrite = cfg['overwrite']
+        self.batch = cfg['batch']
 
         # Setup Device
         mp.set_start_method('spawn')
@@ -114,7 +115,8 @@ class YolotTrainer():
 
         # Build Dataloader
         self.dataloader = self.build_dataloader(data_path=self.paths['data'], split="train",
-                                                data_cap=100000, seq_len=self.sequence_len, aug=cfg["aug"], drop=cfg["drop"], args=cfg)
+                                                data_cap=100000, seq_len=self.sequence_len, aug=cfg["aug"], 
+                                                drop=cfg["drop"], args=cfg, batch=self.batch)
 
         # Build validators
         self.validator = self.build_validator(data_path=self.paths['data'], limit=100000, seq_len=6)
