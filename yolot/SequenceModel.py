@@ -104,13 +104,21 @@ class SequenceModel(BaseModel):
             return x, hidden_states
 
     def process_sequence(self, x, *args, **kwargs):
-        '''Note: only batch size of 1 is implemented'''
+        '''
+        Input:
+        - torch.tensor (seq_len, batch, ch, w, h)
+        Output:
+        - List of outputs and hidden states
+        '''
         # Initialize Output and Hidden State Lists
         hidden_state_list = []
         outputs = []
         inputs = torch.split(x,1,dim=0)
         # Iterate over each input sequence
         for input in inputs:
+            # Cut out sequence dimension if it exists
+            if len(input.size()) > 4:
+                input = input.squeeze(0)
             # Feed forward slice and save hidden state
             y, self.hidden_states = super().forward(input.to(self.device))
             # Save output and hidden state
@@ -123,10 +131,17 @@ class SequenceModel(BaseModel):
     def sequence_loss(self, outputs, sequence_batch):
         if not hasattr(self, 'criterion'):
             self.criterion = self.init_criterion()
+        # Find Batch Size
+        bs = outputs[0][0].size()[0]
         # Combine outputs into a single "batch"
-        outputs_cat = [torch.cat([output[0] for output in outputs], dim=0),
-                   torch.cat([output[1] for output in outputs], dim=0),
-                   torch.cat([output[2] for output in outputs], dim=0)]
+        outputs_cat_list = []
+        for batch_id in range(bs):
+            outputs_cat_list.append([torch.cat([output[0][batch_id,:,:,:].unsqueeze(0) for output in outputs], dim=0),
+                                torch.cat([output[1][batch_id,:,:,:].unsqueeze(0) for output in outputs], dim=0),
+                                torch.cat([output[2][batch_id,:,:,:].unsqueeze(0) for output in outputs], dim=0)])
+        outputs_cat = [torch.cat([output[0] for output in outputs_cat_list], dim=0),
+                        torch.cat([output[1] for output in outputs_cat_list], dim=0),
+                        torch.cat([output[2] for output in outputs_cat_list], dim=0)]
 
         loss, detached = self.criterion(outputs_cat, sequence_batch)
         return loss / len(outputs)

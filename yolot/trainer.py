@@ -189,7 +189,7 @@ class YolotTrainer():
 
         return model
 
-    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, drop=0.0, args=None):
+    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, drop=0.0, args=None, batch=1):
         # Create Datasets for Training and Validation
         dataset = BMOTSDataset(data_path, split,
                                device=self.device,
@@ -202,13 +202,13 @@ class YolotTrainer():
         if self.ddp:
             sampler = DistributedSampler(dataset, shuffle=False,
                                                drop_last=False)
-            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
+            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
                                             collate_fn=collate_fn, drop_last=False, pin_memory=False,
                                             sampler=sampler)
         else:
             sampler = None
-            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
-                                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
+            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
+                                            collate_fn=collate_fn, drop_last=False, pin_memory=False)
         return dataloader
 
     def build_validator(self, data_path, limit, seq_len):

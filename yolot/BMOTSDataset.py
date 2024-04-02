@@ -121,8 +121,6 @@ class BMOTSDataset(Dataset):
         print(f"Dataset constructed with {self.num_vids} videos, creating {self.num_sequences} "
               f"sequences of max size {self.max_sequence_length}")
 
-
-
     def __len__(self):
         '''
         Function returns information about the size of the dataset
@@ -192,7 +190,7 @@ class BMOTSDataset(Dataset):
                 scales.append(s)
                 frames[i] = torch.Tensor(tim/255.0).movedim(-1,0)
         
-        # Apply Random frame dropout after 5halfway through the clip
+        # Apply Random frame dropout after halfway through the clip
         for i in range(int(len(frames)/2), len(frames)):
             if random.random() < self.drop:
                 frames[i] = torch.ones(self.input_size)*0.5
@@ -244,6 +242,17 @@ class BMOTSDataset(Dataset):
 
         # Get Bounding Boxes
         #tboxes = torch.Tensor(self.perspective.apply_bboxes(torch.stack(bboxes, dim=0).numpy()*640, m)).to(self.device) / 640
+        # Pad frames for sequence length with duplicates of the previous sequence
+        if len(frame_files) < self.max_sequence_length:
+            for i in range(self.max_sequence_length - len(frame_files)):
+                ori_sizes.append(ori_sizes[-1])
+                resized_shapes.append(resized_shapes[-1])
+                ratio_pads.append(ratio_pads[-1])
+                frames.append(frames[-1])
+                bboxes.append(bboxes[-1])
+                cls_ids.append(cls_ids[-1])
+                frame_ids.append(frame_ids[-1])
+
 
         sample = {}
         sample['im_file'] = tuple(im_paths)
@@ -281,7 +290,39 @@ class BMOTSDataset(Dataset):
         return img_np
 
 def collate_fn(batch):
-    return batch
+    # Merge Image Tensors for Single Forward Pass (batch, ch, w, h)
+    cbatch = {}
+    device = batch[0]['img'].device
+    batch_ims = torch.Tensor().to(device)
+    for seq in batch:
+        batch_ims = torch.cat([batch_ims, seq.pop('img').unsqueeze(1)], dim=1)
+    cbatch['img'] = batch_ims
+
+    # Extend all other fields batch idx depending on frame_idx of the batch
+    frame_idx_start = 0
+    im_file = []
+    ori_shape = []
+    resized_shape = []
+    bboxes = torch.Tensor().to(device)
+    cls = torch.Tensor().to(device)
+    frame_idx = torch.Tensor().to(device)
+    for i, seq in enumerate(batch):
+        im_file = im_file + list(seq['im_file'])
+        ori_shape = ori_shape + list(seq['ori_shape'])
+        resized_shape += list(seq["resized_shape"])
+        bboxes = torch.cat([bboxes, seq['bboxes']], dim=0)
+        cls = torch.cat([cls, seq['cls']], dim=0)
+        frame_idx = torch.cat([frame_idx, seq['batch_idx']+frame_idx_start])
+        frame_idx_start += len(im_file) 
+
+    cbatch['im_file'] = tuple(im_file)
+    cbatch['ori_shape'] = tuple(ori_shape)
+    cbatch['resized_shape'] = tuple(resized_shape)
+    cbatch['bboxes'] = bboxes
+    cbatch['cls'] = cls
+    cbatch['batch_idx'] = frame_idx
+        
+    return cbatch
 
 def single_batch_collate(batch):
     return batch[0]

@@ -65,9 +65,20 @@ def main_func(args):
 
     # Set up val dataloader
     print("Building Dataset...")
-    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=100, data_cap=1000, shuffle=False, aug=True, drop=0.0)
+    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=8, data_cap=1000, shuffle=False, aug=True, drop=0.0)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=2, shuffle=False,
                             collate_fn=collate_fn, drop_last=False, pin_memory=False)
+    
+    # Setup Model
+    model = SequenceModel("cfg/models/yolot_gru_big_latem.yaml", device='gpu').train()
+    model.model_to(0)
+    # Attributes bandaid
+    class Args(object):
+        pass
+    model.args = Args()
+    model.args.cls = 1
+    model.args.box = 1
+    model.args.dfl = 1
 
     # Setup Video Writer
     if save_path:
@@ -86,42 +97,14 @@ def main_func(args):
     total_detections = 0
     stop = False
     for seq_idx, subsequence in enumerate(pbar):
-        sub_ims = subsequence['img']
+        # Run forward pass
+        output = model(subsequence['img'])
 
-        for frame_idx in range(sub_ims.shape[0]):
+        # Test Loss on the output
+        loss = model.sequence_loss(output, subsequence)
 
-            # Preprocess Frame for OpenCV
-            frame = sub_ims[frame_idx,:,:,:].cpu().numpy()
-            frame = (np.transpose(frame, (1,2,0))*255).astype(np.uint8)
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-            # Get Ground Truth
-            gt_boxes = subsequence['bboxes'][subsequence['batch_idx']==frame_idx]
-            gt_cls = subsequence['cls'][subsequence['batch_idx']==frame_idx]
-
-            # Display Ground Truth
-            for det_idx in range(gt_boxes.shape[0]):
-                cls = int(gt_cls[det_idx])
-                w = int(gt_boxes[det_idx,2]*640)
-                h = int(gt_boxes[det_idx,3]*640)
-                x1 = int(gt_boxes[det_idx,0]*640) - int(w/2)
-                y1 = int(gt_boxes[det_idx,1]*640) - int(h/2)
-                x2 = x1 + w
-                y2 = y1 + h
-                cv2.rectangle(frame,(x1,y1),(x2,y2), (200,200,200), thickness=1)
-                write_label(frame, x1, y1,x2,y2, f"{label_dict[cls]}", color=(100, 100, 100), mode='ct')
-                total_detections += 1
-            
-            
-            # Show Image
-            cv2.imshow("Predictions", frame)
-            writer.write(frame)
-            if cv2.waitKey(0) & 0xFF == ord('q'):
-                    stop = True
-                    break
-        if stop:
-            break
-
+        
     print("Inference Complete!")
 
 def write_label(image,x1,y1,x2,y2,label, color=(255,255,255), mode='tl'):
