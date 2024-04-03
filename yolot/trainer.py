@@ -244,13 +244,6 @@ class YolotTrainer():
             starting_epoch = 1
             skipping = False
 
-        # Test Validation
-        with torch.no_grad():
-            self.model.eval()
-            self.model.model_to(self.device)
-            mini_metrics = self.mini_validator(model=self.model, fuse=False)
-            self.model.train()
-
         # dist.barrier()
         print(f"RANK {self.global_rank} Starting training loop")
         warmup= True

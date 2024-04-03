@@ -15,7 +15,7 @@ model_save_path: "/datasets/BDD100k/results"
 model_load_path: "/datasets/BDD100k/results/late/weights/best.pth"
 run_name: "late_b4"
 overwrite: False
-seq_len: 10
+seq_len: 8
 visualize: False
 prof: False
 lr0: 0.001  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
@@ -45,7 +45,7 @@ translate: 0.3  # (float) image translation (+/- fraction)
 scale: 0.5  # (float) image scale (+/- gain)
 shear: 0.2  # (float) image shear (+/- deg)
 perspective: 0.0005  # (float) image perspective (+/- fraction), range 0-0.001
-batch: 4  # (int) number of sequences per batch 
+batch: 5  # (int) number of sequences per batch 
 
 
 # Train settings -------------------------------------------------------------------------------------------------------
