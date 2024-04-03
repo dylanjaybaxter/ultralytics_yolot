@@ -15,7 +15,7 @@ model_save_path: "/datasets/BDD100k/results"
 model_load_path: "/datasets/BDD100k/results/late/weights/best.pth"
 run_name: "late_b4"
 overwrite: False
-seq_len: 8
+seq_len: 10
 visualize: False
 prof: False
 lr0: 0.001  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
