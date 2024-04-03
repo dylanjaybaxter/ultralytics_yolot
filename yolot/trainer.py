@@ -191,7 +191,7 @@ class YolotTrainer():
 
         return model
 
-    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, drop=0.0, args=None, batch=1):
+    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, drop=0.0, args=None, batch=1, cf=collate_fn):
         # Create Datasets for Training and Validation
         dataset = BMOTSDataset(data_path, split,
                                device=self.device,
@@ -205,17 +205,17 @@ class YolotTrainer():
             sampler = DistributedSampler(dataset, shuffle=False,
                                                drop_last=False)
             dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
-                                            collate_fn=collate_fn, drop_last=False, pin_memory=False,
+                                            collate_fn=cf, drop_last=False, pin_memory=False,
                                             sampler=sampler)
         else:
             sampler = None
             dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
-                                            collate_fn=collate_fn, drop_last=False, pin_memory=False)
+                                            collate_fn=cf, drop_last=False, pin_memory=False)
         return dataloader
 
     def build_validator(self, data_path, limit, seq_len):
         # Create Validator
-        val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len)
+        val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len, cf=single_batch_collate)
         validator = SequenceValidator(dataloader=val_loader, save_dir=Path(self.paths['mini']))
         validator.training = True
         return validator
@@ -243,6 +243,11 @@ class YolotTrainer():
         else:
             starting_epoch = 1
             skipping = False
+
+        # Test Validation
+        self.model.eval()
+        mini_metrics = self.mini_validator(model=self.model, fuse=False)
+        self.model.train()
 
         # dist.barrier()
         print(f"RANK {self.global_rank} Starting training loop")
