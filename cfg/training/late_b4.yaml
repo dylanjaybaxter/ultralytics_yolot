@@ -45,7 +45,7 @@ translate: 0.3  # (float) image translation (+/- fraction)
 scale: 0.5  # (float) image scale (+/- gain)
 shear: 0.2  # (float) image shear (+/- deg)
 perspective: 0.0005  # (float) image perspective (+/- fraction), range 0-0.001
-batch: 5  # (int) number of sequences per batch 
+batch: 4  # (int) number of sequences per batch 
 
 
 # Train settings -------------------------------------------------------------------------------------------------------
