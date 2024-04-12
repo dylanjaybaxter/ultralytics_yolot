@@ -19,7 +19,7 @@ seq_len: 8
 visualize: False
 prof: False
 lr0: 0.001  # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
-lrf: 0.0005  # (float) final learning rate (minimum)
+lrf: 0.0002  # (float) final learning rate (minimum)
 red_factor: 0.98
 warmup_its: 20000
 momentum: 0.937  # (float) SGD momentum/Adam beta1
