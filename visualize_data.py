@@ -65,8 +65,8 @@ def main_func(args):
 
     # Set up val dataloader
     print("Building Dataset...")
-    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=100, data_cap=1000, shuffle=False, aug=True, drop=0.0)
-    val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=2, shuffle=False,
+    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=100, data_cap=1000, shuffle=False, aug=True, drop=0.0, mixup=2)
+    val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=1, shuffle=False,
                             collate_fn=collate_fn, drop_last=False, pin_memory=False)
 
     # Setup Video Writer
@@ -92,7 +92,7 @@ def main_func(args):
 
             # Preprocess Frame for OpenCV
             frame = sub_ims[frame_idx,:,:,:].cpu().numpy()
-            frame = (np.transpose(frame, (1,2,0))*255).astype(np.uint8)
+            frame = (np.transpose(frame[0,:,:,:], (1,2,0))*255).astype(np.uint8)
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             # Get Ground Truth

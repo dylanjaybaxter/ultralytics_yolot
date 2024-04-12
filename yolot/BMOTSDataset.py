@@ -42,7 +42,7 @@ label_dict = {
 class BMOTSDataset(Dataset):
     def __init__(self, base_dir, split, seq_len=16, 
                  input_size=[3,640,640], device='cpu', data_cap=None, shuffle=True, 
-                 border=0, aug=False, drop=0.0, args=None):
+                 border=0, aug=False, drop=0.0, mixup=2, args=None):
         '''
         Initializes dataset by storing paths to images and labels
         :param base_dir: The base directory of the dataset
@@ -61,6 +61,7 @@ class BMOTSDataset(Dataset):
         self.border = border
         self.aug = aug
         self.drop = drop
+        self.mixup = 2
         
         # Setup Augmentation
         if args == None:
@@ -129,7 +130,7 @@ class BMOTSDataset(Dataset):
         '''
         return len(self.subsequence_keys)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, suppress_mixup=False):
         '''
         Function for returning a pytorch tensor of
         :param idx:
@@ -248,11 +249,12 @@ class BMOTSDataset(Dataset):
                 ori_sizes.append(ori_sizes[-1])
                 resized_shapes.append(resized_shapes[-1])
                 ratio_pads.append(ratio_pads[-1])
-                frames.append(frames[-1])
-                if len(frame_ids) > 0:
-                    bboxes.append(bboxes[frame_ids==frame_ids[-1]])
-                    cls_ids.append(cls_ids[frame_ids==frame_ids[-1]])
-                    frame_ids.append(frame_ids[frame_ids==frame_ids[-1]])
+                frames.append(torch.ones_like(frames[-1])*0.5)
+                # frames.append(frames[-1])
+                # if len(frame_ids) > 0:
+                #     bboxes.append(bboxes[frame_ids==frame_ids[-1]])
+                #     cls_ids.append(cls_ids[frame_ids==frame_ids[-1]])
+                #     frame_ids.append(frame_ids[frame_ids==frame_ids[-1]])
 
 
         sample = {}
@@ -270,6 +272,16 @@ class BMOTSDataset(Dataset):
             sample['frame_idx'] = torch.Tensor([]).to(self.device)
         sample['batch_idx'] = sample['frame_idx']  # For access by loss calculation
         sample['ratio_pad'] = ratio_pads
+
+        # Mixup
+        if not suppress_mixup:
+            mixup_ratio = np.random.beta(32.0, 32.0)
+            for i in range(self.mixup-1):
+                sample2 = self.__getitem__(int(random.random()*self.__len__()), suppress_mixup=True)
+                sample['img'] = mixup_ratio*sample["img"]+(1-mixup_ratio)*sample2["img"]
+                sample['cls'] = torch.concat([sample['cls'], sample2['cls']])
+                sample['bboxes'] = torch.concat([sample['bboxes'], sample2['bboxes']])
+                sample['batch_idx'] = torch.concat([sample['batch_idx'], sample2['batch_idx']])
 
         return sample
     
