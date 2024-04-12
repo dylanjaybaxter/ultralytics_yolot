@@ -74,6 +74,7 @@ class YolotTrainer():
         self.DEBUG = cfg['DEBUG']
         self.overwrite = cfg['overwrite']
         self.batch = cfg['batch']
+        self.mixup = cfg['mixup']
 
         # Setup Device
         mp.set_start_method('spawn')
@@ -116,7 +117,7 @@ class YolotTrainer():
         # Build Dataloader
         self.dataloader = self.build_dataloader(data_path=self.paths['data'], split="train",
                                                 data_cap=100000, seq_len=self.sequence_len, aug=cfg["aug"], 
-                                                drop=cfg["drop"], args=cfg, batch=self.batch)
+                                                drop=cfg["drop"], mixup=cfg['mixup'], args=cfg, batch=self.batch)
 
         # Build validators
         self.validator = self.build_validator(data_path=self.paths['data'], limit=100000, seq_len=6)
@@ -191,7 +192,8 @@ class YolotTrainer():
 
         return model
 
-    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, drop=0.0, args=None, batch=1, cf=collate_fn):
+    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, 
+                         drop=0.0, args=None, mixup=0, batch=1, cf=collate_fn):
         # Create Datasets for Training and Validation
         dataset = BMOTSDataset(data_path, split,
                                device=self.device,
@@ -199,6 +201,7 @@ class YolotTrainer():
                                data_cap=data_cap,
                                aug=aug,
                                drop=drop,
+                               mixup=mixup,
                                args=args)
         # Create Samplers for distributed processing
         if self.ddp:

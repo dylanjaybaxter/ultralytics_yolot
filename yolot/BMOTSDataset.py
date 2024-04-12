@@ -42,7 +42,7 @@ label_dict = {
 class BMOTSDataset(Dataset):
     def __init__(self, base_dir, split, seq_len=16, 
                  input_size=[3,640,640], device='cpu', data_cap=None, shuffle=True, 
-                 border=0, aug=False, drop=0.0, mixup=2, args=None):
+                 border=0, aug=False, drop=0.0, mixup=0, args=None):
         '''
         Initializes dataset by storing paths to images and labels
         :param base_dir: The base directory of the dataset
@@ -61,7 +61,7 @@ class BMOTSDataset(Dataset):
         self.border = border
         self.aug = aug
         self.drop = drop
-        self.mixup = 2
+        self.mixup = mixup
         
         # Setup Augmentation
         if args == None:
@@ -276,7 +276,7 @@ class BMOTSDataset(Dataset):
         # Mixup
         if not suppress_mixup:
             mixup_ratio = np.random.beta(32.0, 32.0)
-            for i in range(self.mixup-1):
+            for i in range(self.mixup):
                 sample2 = self.__getitem__(int(random.random()*self.__len__()), suppress_mixup=True)
                 sample['img'] = mixup_ratio*sample["img"]+(1-mixup_ratio)*sample2["img"]
                 sample['cls'] = torch.concat([sample['cls'], sample2['cls']])
