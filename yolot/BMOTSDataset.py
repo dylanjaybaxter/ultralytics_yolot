@@ -61,7 +61,7 @@ class BMOTSDataset(Dataset):
         self.border = border
         self.aug = aug
         self.drop = drop
-        self.mixup = mixup
+        self.mixup = int(mixup)
         
         # Setup Augmentation
         if args == None:
