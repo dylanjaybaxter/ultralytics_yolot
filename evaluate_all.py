@@ -29,7 +29,21 @@ known_configs = {
     'low_lr':           "yolot_gru_bign.yaml",
     'med_gru':          "yolot_gru_bigm.yaml",
     'mpac100':          "yolotn.yaml",
-    "gru_cont":         "yolot_grun.yaml"}
+    "gru_cont":         "yolot_grun.yaml",
+    "aug_med":          "yolot_gru_bigm.yaml",     
+    "aug_drop":         "yolot_gru_bigm.yaml", 
+    "aug_drop_med":     "yolot_gru_bigm.yaml",
+    "aug_drop_late":    "yolot_gru_big_latem.yaml",
+    "sum_val":          "yolot_gru_bigm.yaml",
+    "late":             "yolot_gru_big_latem.yaml",
+    "late_b4":          "yolot_gru_big_latem.yaml",
+    "late_b4_med":      "yolot_gru_big_latem.yaml",
+    "med_adam":         "yolot_gru_big_latem.yaml",
+    "early_b4":         "yolot_gru_big_latem.yaml",
+
+    }
+
+known_models = ["yolotn.yaml", "yolotm.yaml", "yolot_gru_bigm.yaml", "yolot_gru_big_latem.yaml"]
 
 def init_parser():
     parser = argparse.ArgumentParser(description="Find folders containing 'best.pt' in a specified path.")
@@ -83,13 +97,29 @@ def main(args):
         print("="*len(banner_text))
         print(banner_text)
         print("="*len(banner_text))
-        # Build model
+        # Build 
+        try_models = False
         try:
             model, metadata = build_model(run['model_path'], join("./cfg/models",known_configs[run['name']]))
             last_metadata = get_metadata(run['last_path']) if exists(run['last_path']) else {}
                 
         except Exception as e:
-            print(f"Failed to build model from {run['name']}: {e}")
+            print(f"Failed to build model from {run['name']}: {e}, retrying with known models")
+            try_models = True
+            model_loaded = False
+
+        if try_models:
+            for model_cfg in known_models:
+                try:
+                    model, metadata = build_model(run['model_path'], join("./cfg/models",model_cfg))
+                    last_metadata = get_metadata(run['last_path']) if exists(run['last_path']) else {}
+                    print(f"[Y] {model_cfg} Loaded")
+                    model_loaded = True
+                    break
+                        
+                except Exception as e:
+                    print(f"[X] {model_cfg} Failed")
+        if not model_loaded:
             continue
 
         # Run validation
