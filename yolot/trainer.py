@@ -75,6 +75,7 @@ class YolotTrainer():
         self.overwrite = cfg['overwrite']
         self.batch = cfg['batch']
         self.mixup = cfg['mixup']
+        self.acc = cfg['acc']
 
         # Setup Device
         mp.set_start_method('spawn')
@@ -307,13 +308,15 @@ class YolotTrainer():
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
 
-                # Zero Out Leftover Gradients
-                self.optimizer.zero_grad()
                 # Compute New Gradients
                 self.scaler.scale(loss).backward()
-                # Update weights
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                # Update only when accumulated acc batches
+                if (seq_idx+1 % self.acc) == 0:
+                    # Zero Out Leftover Gradients
+                    self.optimizer.zero_grad()
+                    # Update weights
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
 
                 # Update Progress Bar
                 if self.global_rank == 0:
