@@ -12,7 +12,7 @@ epochs: 100  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
 met_save_path: "/datasets/BDD100k/results"
 model_save_path: "/datasets/BDD100k/results"
-model_load_path: "/datasets/BDD100k/results/late/weights/best.pth"
+model_load_path: "/datasets/BDD100k/pretrained/yolot_gru_big_latem_pretrained.yaml"
 run_name: "acc2"
 overwrite: False
 seq_len: 8
