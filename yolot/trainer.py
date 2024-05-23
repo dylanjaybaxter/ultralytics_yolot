@@ -309,14 +309,14 @@ class YolotTrainer():
                         loss = self.model.sequence_loss(outputs, subsequence)
 
                 # Compute New Gradients
-                self.scaler.scale(loss).backward()
+                self.scaler.scale(loss/self.acc).backward()
                 # Update only when accumulated acc batches
                 if (seq_idx+1 % self.acc) == 0:
-                    # Zero Out Leftover Gradients
-                    self.optimizer.zero_grad()
                     # Update weights
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
+                    # Zero Out Leftover Gradients
+                    self.optimizer.zero_grad()
 
                 # Update Progress Bar
                 if self.global_rank == 0:
