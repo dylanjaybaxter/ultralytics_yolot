@@ -204,14 +204,16 @@ class YolotTrainer():
                                drop=drop,
                                mixup=mixup,
                                args=args)
-        # Create Samplers for distributed processing
         if self.ddp:
+            # Create Samplers for distributed processing
             sampler = DistributedSampler(dataset, shuffle=False,
                                                drop_last=False)
+            # Create Dataloader with reusable workers
             dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
                                             collate_fn=cf, drop_last=False, pin_memory=False,
                                             sampler=sampler)
         else:
+            # Create a dataloader with reusable workers
             sampler = None
             dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
                                             collate_fn=cf, drop_last=False, pin_memory=False)
@@ -331,11 +333,12 @@ class YolotTrainer():
                 # Save checkpoint periodically
                 if self.global_rank == 0 and save_counter >= self.save_freq:
                     print("Validating...")
-
+                    # Prevents unnecessary gradient tracking
                     with torch.no_grad():
                         if self.ddp:
                             mini_metrics = self.mini_validator(model=self.model.module)
                         else:
+                            # Use validator to evaluate a mini dataset as a sanity check
                             self.model.eval()
                             mini_metrics = self.mini_validator(model=self.model, fuse=False)
                             self.model.train()
@@ -348,7 +351,8 @@ class YolotTrainer():
                         self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
                                              epoch, seq_idx, loss, self.optimizer.param_groups[0]['lr'], 
                                              self.paths['run'], "mini_check.pt")
-
+                
+                # Reset counter for mini validator
                 if save_counter >= self.save_freq:
                     save_counter = 0
                     if self.ddp:
@@ -485,6 +489,7 @@ class YolotTrainer():
             cv2.waitKey(1)
     
     def build_optimizer(self, model, name="auto", lr=0.001, momentum=0.9, decay=1e-5, iterations=1e5):
+        # (From ultralytics)
         """
         Constructs an optimizer for the given model, based on the specified optimizer name, learning rate, momentum,
         weight decay, and number of iterations.
