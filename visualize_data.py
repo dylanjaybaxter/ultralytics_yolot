@@ -65,7 +65,16 @@ def main_func(args):
 
     # Set up val dataloader
     print("Building Dataset...")
-    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=100, data_cap=1000, shuffle=False, aug=True, drop=0.2, mixup=0)
+    args = {}
+    args['perspective'] = 0.0005
+    args['shear'] = 0.2
+    args['translate'] = 0.3
+    args['scale'] = 0.5
+    args['degrees'] = 0.3
+    args['hsv_h'] = 0.015
+    args['hsv_s'] = 0.7
+    args['hsv_v'] = 0.4
+    val_dataset = BMOTSDataset(data_path, "val", device=0, seq_len=100, data_cap=1000, shuffle=False, aug=True, drop=0.1, mixup=3, args=args)
     val_loader = InfiniteDataLoader(val_dataset, num_workers=0, batch_size=1, shuffle=False,
                             collate_fn=collate_fn, drop_last=False, pin_memory=False)
 
