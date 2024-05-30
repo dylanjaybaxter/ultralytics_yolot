@@ -47,6 +47,7 @@ shear: 0.0  # (float) image shear (+/- deg)
 perspective: 0.0  # (float) image perspective (+/- fraction), range 0-0.001
 batch: 4  # (int) number of sequences per batch 
 mixup: 0
+acc: 1
 
 
 # Train settings -------------------------------------------------------------------------------------------------------
