@@ -309,16 +309,18 @@ class YolotTrainer():
                         loss = self.model.module.sequence_loss(outputs, subsequence)
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
-
-                # Compute New Gradients
+                
+                # Clear gradients the iteration after accumulation
+                if ((seq_idx+2 % self.acc) == 0) or (self.acc == 1):
+                    # Zero Out Leftover Gradients
+                    self.optimizer.zero_grad()
+                # Compute New Gradients Always
                 self.scaler.scale(loss/self.acc).backward()
                 # Update only when accumulated acc batches
-                if (seq_idx+1 % self.acc) == 0:
+                if ((seq_idx+1 % self.acc) == 0) or (self.acc == 1):
                     # Update weights
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
-                    # Zero Out Leftover Gradients
-                    self.optimizer.zero_grad()
 
                 # Update Progress Bar
                 if self.global_rank == 0:
