@@ -161,7 +161,7 @@ class ConvGRU(nn.Module):
         self.hidden_state = canidates * update_mask + self.hidden_state * (1 - update_mask) # Update the hidden state with past and updated values
 
         # Simple Reduction of output channels to match input channels
-        y = self.bottleneck(self.hidden_state)
+        y = self.bottleneck(self.hidden_state) + x
         return y, self.hidden_state.detach()
 
     def get_hidden_states(self):
