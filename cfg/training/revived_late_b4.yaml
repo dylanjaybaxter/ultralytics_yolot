@@ -10,7 +10,7 @@ model: "cfg/models/yolot_gru_big_latem.yaml"  # (str, optional) path to model fi
 data:  "/mpac/dybaxter/bdd100k_ws/bdd100k/" # (str, optional) path to data file, i.e. coco128.yaml
 epochs: 100  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
-met_save_path: "/mpac/dyabxter/results"
+met_save_path: "/mpac/dybaxter/results"
 model_save_path: "/mpac/dybaxter/results"
 model_load_path: "/mpac/dybaxter/results/late/weights/best.pth"
 run_name: "late_b4"
@@ -45,7 +45,8 @@ translate: 0.3  # (float) image translation (+/- fraction)
 scale: 0.5  # (float) image scale (+/- gain)
 shear: 0.2  # (float) image shear (+/- deg)
 perspective: 0.0005  # (float) image perspective (+/- fraction), range 0-0.001
-batch: 4  # (int) number of sequences per batch 
+batch: 4  # (int) number of sequences per batch
+acc: 1
 
 
 # Train settings -------------------------------------------------------------------------------------------------------
