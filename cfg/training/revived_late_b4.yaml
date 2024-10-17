@@ -12,7 +12,7 @@ epochs: 100  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
 met_save_path: "/mpac/dybaxter/results"
 model_save_path: "/mpac/dybaxter/results"
-model_load_path: "/mpac/dybaxter/results/late/weights/best.pth"
+model_load_path: "/mpac/dybaxter/results/late_b4/results/last.pt"
 run_name: "late_b4"
 overwrite: False
 seq_len: 8
