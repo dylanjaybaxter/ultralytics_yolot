@@ -7,13 +7,13 @@ mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchma
 # YOLOT Training Script settings
 DEBUG: False
 model: "cfg/models/yolot_gru_big_latem.yaml"  # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
-data:  "/datasets/BDD100k/bdd100k_ws/bdd100k/" # (str, optional) path to data file, i.e. coco128.yaml
+data:  "/mpac/dybaxter/bdd100k_ws/bdd100k/" # (str, optional) path to data file, i.e. coco128.yaml
 epochs: 100  # (int) number of epochs to train for
 patience: 50  # (int) epochs to wait for no observable improvement for early stopping of training
-met_save_path: "/datasets/BDD100k/results"
-model_save_path: "/datasets/BDD100k/results"
-model_load_path: "/datasets/BDD100k/results/late/weights/best.pth"
-run_name: "more_mixup"
+met_save_path: "/mpac/dybaxter/results"
+model_save_path: "/mpac/dybaxter/results"
+model_load_path: ""
+run_name: "more_mixup_scratch"
 overwrite: False
 seq_len: 8
 visualize: False
@@ -31,7 +31,7 @@ box: 7.5  # (float) box loss gain
 cls: 0.5  # (float) cls loss gain (scale with pixels)
 dfl: 1.5  # (float) dfl loss gain
 ddp: False
-workers: 4  # (int) number of worker threads for data loading (per RANK if DDP)
+workers: 5  # (int) number of worker threads for data loading (per RANK if DDP)
 device: 0  # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 optimizer: SGD  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
 # Augmentation
