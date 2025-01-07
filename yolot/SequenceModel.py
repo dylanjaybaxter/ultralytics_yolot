@@ -99,7 +99,7 @@ class SequenceModel(BaseModel):
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
         if len(hidden_states) == 0:
-            return x
+            return x, []
         else:
             return x, hidden_states
 
