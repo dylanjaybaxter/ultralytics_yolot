@@ -113,12 +113,11 @@ And adapted for use in yolot
 '''
 
 class ConvGRU(nn.Module):
-    def __init__(self, input_size, hidden_size, k, b=1, device='cpu', *args, **kwargs) -> None:
+    def __init__(self, input_size, hidden_size, k, device='cpu', *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # Members
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.b = b
 
         # Layers
         self.reset = nn.Conv2d(input_size+hidden_size, hidden_size, kernel_size=k, padding=k//2)
@@ -146,23 +145,24 @@ class ConvGRU(nn.Module):
         Input Tensor x: (batch, ch, h, w)
         Output:
         '''
-        # Initialize Hidden State if Needed
-        if self.hidden_state is None:
+        # Initialize Hidden State if Uninitialized or if Batch Mismatch
+        input_batch_sz = x.data.size()[0]
+        if self.hidden_state is None or input_batch_sz != self.hidden_state.size()[0]:
             self.spatial = x.data.size()[2:]
             self.hidden_state = torch.zeros(
-                [self.b, self.hidden_size]+list(self.spatial), 
+                [input_batch_sz, self.hidden_size]+list(self.spatial), 
                 requires_grad=True).to(self.device)
         
         # Conv GRU Function
-        full_state = torch.cat([x, self.hidden_state], dim=1)
-        update_mask = func.sigmoid(self.update(full_state))
-        reset_mask = func.sigmoid(self.reset(full_state))
-        canidates = func.tanh(self.out(torch.cat([x,self.hidden_state*reset_mask], dim=1)))
-        self.hidden_state = canidates * update_mask + self.hidden_state * (1 - update_mask)
+        full_state = torch.cat([x, self.hidden_state], dim=1) # Create full state of input+hidden
+        update_mask = func.sigmoid(self.update(full_state)) # Determine which state values will be updated
+        reset_mask = func.sigmoid(self.reset(full_state)) # Determine which values will be forgotten
+        canidates = func.tanh(self.out(torch.cat([x,self.hidden_state*reset_mask], dim=1))) # Filter values to be carried over from past state
+        self.hidden_state = canidates * update_mask + self.hidden_state * (1 - update_mask) # Update the hidden state with past and updated values
 
         # Simple Reduction of output channels to match input channels
-        y = self.bottleneck(self.hidden_state)
-        return y, self.hidden_state
+        y = self.bottleneck(self.hidden_state) + x
+        return y, self.hidden_state.detach()
 
     def get_hidden_states(self):
         return self.hidden_state

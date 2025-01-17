@@ -8,12 +8,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 # Torch
 import torch
-import torch.optim as opt
+import torch.optim as optim
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import LambdaLR
 # Ultralytics
 from ultralytics.data.build import InfiniteDataLoader
 from ultralytics.utils.ops import non_max_suppression
+from ultralytics.utils import LOGGER, colorstr
+
 # Parallel
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
@@ -71,6 +73,9 @@ class YolotTrainer():
         self.ddp = cfg['ddp']
         self.DEBUG = cfg['DEBUG']
         self.overwrite = cfg['overwrite']
+        self.batch = cfg['batch']
+        self.mixup = cfg['mixup']
+        self.acc = cfg['acc']
 
         # Setup Device
         mp.set_start_method('spawn')
@@ -112,7 +117,8 @@ class YolotTrainer():
 
         # Build Dataloader
         self.dataloader = self.build_dataloader(data_path=self.paths['data'], split="train",
-                                                data_cap=100000, seq_len=self.sequence_len)
+                                                data_cap=100000, seq_len=self.sequence_len, aug=cfg["aug"], 
+                                                drop=cfg["drop"], mixup=cfg['mixup'], args=cfg, batch=self.batch)
 
         # Build validators
         self.validator = self.build_validator(data_path=self.paths['data'], limit=100000, seq_len=6)
@@ -127,14 +133,16 @@ class YolotTrainer():
             if 'metadata' in self.ckpt:
                 self.lr0= self.lr0 * self.lam1(self.ckpt['metadata']['epoch']) 
                 print(f"Continuing with learning rate {self.lr0}")
-        self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
+        
+        #self.optimizer = opt.SGD(self.model.parameters(), lr=self.lr0, momentum=self.momentum)
+        self.optimizer = self.build_optimizer(self.model, name=self.cfg['optimizer'], lr=self.lr0, momentum=self.momentum)
 
         if self.ckpt is not None and self.continuing:
             # Load state of previous optimizer
             self.optimizer.load_state_dict(self.ckpt['optimizer'])
 
         # If loading from a checkpoint, load the optimizer
-        self.scheduler = LambdaLR(self.optimizer, lr_lambda=[self.lam1])
+        self.scheduler = LambdaLR(self.optimizer, lr_lambda=self.lam1)
 
         # Initialize Tensorboard
         self.tb_writer, self.tb_prog = self.init_tb(self.paths['tb_dir'], port=self.tb_port)
@@ -185,28 +193,35 @@ class YolotTrainer():
 
         return model
 
-    def build_dataloader(self, data_path, split, data_cap, seq_len):
+    def build_dataloader(self, data_path, split, data_cap, seq_len, aug=False, 
+                         drop=0.0, args=None, mixup=0, batch=1, cf=collate_fn):
         # Create Datasets for Training and Validation
         dataset = BMOTSDataset(data_path, split,
                                device=self.device,
                                seq_len=seq_len,
-                               data_cap=data_cap)
-        # Create Samplers for distributed processing
+                               data_cap=data_cap,
+                               aug=aug,
+                               drop=drop,
+                               mixup=mixup,
+                               args=args)
         if self.ddp:
+            # Create Samplers for distributed processing
             sampler = DistributedSampler(dataset, shuffle=False,
                                                drop_last=False)
-            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
-                                            collate_fn=collate_fn, drop_last=False, pin_memory=False,
+            # Create Dataloader with reusable workers
+            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
+                                            collate_fn=cf, drop_last=False, pin_memory=False,
                                             sampler=sampler)
         else:
+            # Create a dataloader with reusable workers
             sampler = None
-            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=1, shuffle=False,
-                                            collate_fn=single_batch_collate, drop_last=False, pin_memory=False)
+            dataloader = InfiniteDataLoader(dataset, num_workers=self.workers, batch_size=batch, shuffle=False,
+                                            collate_fn=cf, drop_last=False, pin_memory=False)
         return dataloader
 
     def build_validator(self, data_path, limit, seq_len):
         # Create Validator
-        val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len)
+        val_loader = self.build_dataloader(data_path=data_path, split="val", data_cap=limit, seq_len=seq_len, cf=single_batch_collate)
         validator = SequenceValidator(dataloader=val_loader, save_dir=Path(self.paths['mini']))
         validator.training = True
         return validator
@@ -294,14 +309,18 @@ class YolotTrainer():
                         loss = self.model.module.sequence_loss(outputs, subsequence)
                     else:
                         loss = self.model.sequence_loss(outputs, subsequence)
-
-                # Zero Out Leftover Gradients
-                self.optimizer.zero_grad()
-                # Compute New Gradients
-                self.scaler.scale(loss).backward()
-                # Update weights
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                
+                # Clear gradients the iteration after accumulation
+                if ((seq_idx+2 % self.acc) == 0) or (self.acc == 1):
+                    # Zero Out Leftover Gradients
+                    self.optimizer.zero_grad()
+                # Compute New Gradients Always
+                self.scaler.scale(loss/self.acc).backward()
+                # Update only when accumulated acc batches
+                if ((seq_idx+1 % self.acc) == 0) or (self.acc == 1):
+                    # Update weights
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
 
                 # Update Progress Bar
                 if self.global_rank == 0:
@@ -316,11 +335,12 @@ class YolotTrainer():
                 # Save checkpoint periodically
                 if self.global_rank == 0 and save_counter >= self.save_freq:
                     print("Validating...")
-
+                    # Prevents unnecessary gradient tracking
                     with torch.no_grad():
                         if self.ddp:
                             mini_metrics = self.mini_validator(model=self.model.module)
                         else:
+                            # Use validator to evaluate a mini dataset as a sanity check
                             self.model.eval()
                             mini_metrics = self.mini_validator(model=self.model, fuse=False)
                             self.model.train()
@@ -333,7 +353,8 @@ class YolotTrainer():
                         self.save_checkpoint(self.model.state_dict(), self.optimizer.state_dict(),
                                              epoch, seq_idx, loss, self.optimizer.param_groups[0]['lr'], 
                                              self.paths['run'], "mini_check.pt")
-
+                
+                # Reset counter for mini validator
                 if save_counter >= self.save_freq:
                     save_counter = 0
                     if self.ddp:
@@ -468,6 +489,70 @@ class YolotTrainer():
 
             cv2.imshow('Label Output', image)
             cv2.waitKey(1)
+    
+    def build_optimizer(self, model, name="auto", lr=0.001, momentum=0.9, decay=1e-5, iterations=1e5):
+        # (From ultralytics)
+        """
+        Constructs an optimizer for the given model, based on the specified optimizer name, learning rate, momentum,
+        weight decay, and number of iterations.
+
+        Args:
+            model (torch.nn.Module): The model for which to build an optimizer.
+            name (str, optional): The name of the optimizer to use. If 'auto', the optimizer is selected
+                based on the number of iterations. Default: 'auto'.
+            lr (float, optional): The learning rate for the optimizer. Default: 0.001.
+            momentum (float, optional): The momentum factor for the optimizer. Default: 0.9.
+            decay (float, optional): The weight decay for the optimizer. Default: 1e-5.
+            iterations (float, optional): The number of iterations, which determines the optimizer if
+                name is 'auto'. Default: 1e5.
+
+        Returns:
+            (torch.optim.Optimizer): The constructed optimizer.
+        """
+
+        g = [], [], []  # optimizer parameter groups
+        bn = tuple(v for k, v in torch.nn.__dict__.items() if "Norm" in k)  # normalization layers, i.e. BatchNorm2d()
+        if name == "auto":
+            LOGGER.info(
+                f"{colorstr('optimizer:')} 'optimizer=auto' found, "
+                f"ignoring 'lr0={self.cfg.lr0}' and 'momentum={self.cfg.momentum}' and "
+                f"determining best 'optimizer', 'lr0' and 'momentum' automatically... "
+            )
+            nc = getattr(model, "nc", 10)  # number of classes
+            lr_fit = round(0.002 * 5 / (4 + nc), 6)  # lr0 fit equation to 6 decimal places
+            name, lr, momentum = ("SGD", 0.01, 0.9) if iterations > 10000 else ("AdamW", lr_fit, 0.9)
+            self.args.warmup_bias_lr = 0.0  # no higher than 0.01 for Adam
+
+        for module_name, module in model.named_modules():
+            for param_name, param in module.named_parameters(recurse=False):
+                fullname = f"{module_name}.{param_name}" if module_name else param_name
+                if "bias" in fullname:  # bias (no decay)
+                    g[2].append(param)
+                elif isinstance(module, bn):  # weight (no decay)
+                    g[1].append(param)
+                else:  # weight (with decay)
+                    g[0].append(param)
+
+        if name in ("Adam", "Adamax", "AdamW", "NAdam", "RAdam"):
+            optimizer = getattr(optim, name, optim.Adam)(g[2], lr=lr, betas=(momentum, 0.999), weight_decay=0.0)
+        elif name == "RMSProp":
+            optimizer = optim.RMSprop(g[2], lr=lr, momentum=momentum)
+        elif name == "SGD":
+            optimizer = optim.SGD(g[2], lr=lr, momentum=momentum, nesterov=True)
+        else:
+            raise NotImplementedError(
+                f"Optimizer '{name}' not found in list of available optimizers "
+                f"[Adam, AdamW, NAdam, RAdam, RMSProp, SGD, auto]."
+                "To request support for addition optimizers please visit https://github.com/ultralytics/ultralytics."
+            )
+
+        optimizer.add_param_group({"params": g[0], "weight_decay": decay})  # add g0 with weight_decay
+        optimizer.add_param_group({"params": g[1], "weight_decay": 0.0})  # add g1 (BatchNorm2d weights)
+        LOGGER.info(
+            f"{colorstr('optimizer:')} {type(optimizer).__name__}(lr={lr}, momentum={momentum}) with parameter groups "
+            f'{len(g[1])} weight(decay=0.0), {len(g[0])} weight(decay={decay}), {len(g[2])} bias(decay=0.0)'
+        )
+        return optimizer
 
 def check_gradients_for_nan(model):
     for param in model.parameters():
@@ -480,6 +565,8 @@ def check_gradients_for_nan(model):
                 break
         else:
             print(f"None_Grad: {param.name} {param.requires_grad}")
+
+
 
 
 
